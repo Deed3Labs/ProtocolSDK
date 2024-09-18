@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.20;
 
+// OpenZeppelin Upgradeable Contracts
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 // External validator and registry interfaces
 import "./IValidator.sol";
@@ -14,12 +15,14 @@ import "./IValidatorRegistry.sol";
 /**
  * @title DeedNFT
  * @dev An ERC-721 token representing deeds with complex metadata and validator integration.
+ *      Implements UUPSUpgradeable for upgradability.
  */
 contract DeedNFT is
     Initializable,
     ERC721URIStorageUpgradeable,
     AccessControlUpgradeable,
-    PausableUpgradeable
+    PausableUpgradeable,
+    UUPSUpgradeable
 {
     using StringsUpgradeable for uint256;
     using AddressUpgradeable for address;
@@ -64,6 +67,9 @@ contract DeedNFT is
     event Paused(address account);
     event Unpaused(address account);
 
+    // Storage gap for future upgrades
+    uint256[50] private __gap;
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -82,6 +88,7 @@ contract DeedNFT is
         __ERC721URIStorage_init();
         __AccessControl_init();
         __Pausable_init();
+        __UUPSUpgradeable_init(); // Initialize UUPSUpgradeable
 
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(VALIDATOR_ROLE, msg.sender);
@@ -89,6 +96,18 @@ contract DeedNFT is
         defaultValidator = _defaultValidator;
         validatorRegistry = _validatorRegistry;
         nextDeedId = 1;
+    }
+
+    /**
+     * @dev Authorizes the contract upgrade. Only accounts with DEFAULT_ADMIN_ROLE can upgrade.
+     * @param newImplementation Address of the new implementation contract.
+     */
+    function _authorizeUpgrade(address newImplementation)
+        internal
+        override
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        // Authorization logic handled by onlyRole modifier
     }
 
     // Modifiers
@@ -108,7 +127,8 @@ contract DeedNFT is
 
     modifier onlyValidatorOrOwner(uint256 deedId) {
         require(
-            hasRole(VALIDATOR_ROLE, msg.sender) || ownerOf(deedId) == msg.sender,
+            hasRole(VALIDATOR_ROLE, msg.sender) ||
+                ownerOf(deedId) == msg.sender,
             "DeedNFT: Caller is not validator or owner"
         );
         _;
@@ -199,7 +219,10 @@ contract DeedNFT is
             bytes(definition).length > 0,
             "DeedNFT: Definition is required"
         );
-        require(validator != address(0), "DeedNFT: Validator address is required");
+        require(
+            validator != address(0),
+            "DeedNFT: Validator address is required"
+        );
 
         // Ensure validator is registered and supports IValidator interface
         require(
@@ -307,7 +330,10 @@ contract DeedNFT is
      * @dev Batch burns multiple deeds owned by the caller.
      * @param deedIds Array of deed IDs to burn.
      */
-    function burnBatchAssets(uint256[] memory deedIds) external whenNotPaused {
+    function burnBatchAssets(uint256[] memory deedIds)
+        external
+        whenNotPaused
+    {
         for (uint256 i = 0; i < deedIds.length; i++) {
             uint256 deedId = deedIds[i];
             require(
@@ -374,7 +400,10 @@ contract DeedNFT is
             ? deedInfo.validator
             : defaultValidator;
 
-        require(validatorAddress != address(0), "DeedNFT: No validator available");
+        require(
+            validatorAddress != address(0),
+            "DeedNFT: No validator available"
+        );
         require(
             IERC165Upgradeable(validatorAddress).supportsInterface(
                 type(IValidator).interfaceId
@@ -435,7 +464,10 @@ contract DeedNFT is
             ? deedInfo.validator
             : defaultValidator;
 
-        require(validatorAddress != address(0), "DeedNFT: No validator available");
+        require(
+            validatorAddress != address(0),
+            "DeedNFT: No validator available"
+        );
         require(
             validatorAddress.isContract(),
             "DeedNFT: Validator address is not a contract"
