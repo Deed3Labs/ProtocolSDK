@@ -24,6 +24,8 @@ interface IValidator {
      * @param uri_ URI of the operating agreement.
      * @return Name string.
      */
-    function operatingAgreementName(string memory uri_) external view returns (string memory);
+    function operatingAgreementName(string memory uri_)
+        external
+        view
+        returns (string memory);
 }
-
