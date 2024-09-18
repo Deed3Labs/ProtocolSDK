@@ -5,8 +5,11 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/introspection/IERC165Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 
 // External validator and registry interfaces
 import "./IValidator.sol";
@@ -90,8 +93,8 @@ contract DeedNFT is
         __Pausable_init();
         __UUPSUpgradeable_init(); // Initialize UUPSUpgradeable
 
-        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _setupRole(VALIDATOR_ROLE, msg.sender);
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender); // Changed to _grantRole
+        _grantRole(VALIDATOR_ROLE, msg.sender);     // Changed to _grantRole
 
         defaultValidator = _defaultValidator;
         validatorRegistry = _validatorRegistry;
@@ -205,7 +208,7 @@ contract DeedNFT is
         string memory definition,
         string memory configuration,
         address validator
-    ) external onlyRole(VALIDATOR_ROLE) whenNotPaused returns (uint256) {
+    ) public onlyRole(VALIDATOR_ROLE) whenNotPaused returns (uint256) {
         require(owner != address(0), "DeedNFT: Invalid owner address");
         require(
             bytes(ipfsDetailsHash).length > 0,
@@ -262,6 +265,8 @@ contract DeedNFT is
         return deedId;
     }
 
+    // Ensure mintAsset is declared before mintBatchAssets
+
     /**
      * @dev Batch mints multiple deeds.
      * @param owners Array of owner addresses.
@@ -317,7 +322,7 @@ contract DeedNFT is
      * @param deedId ID of the deed to burn.
      */
     function burnAsset(uint256 deedId)
-        external
+        public
         onlyDeedOwner(deedId)
         whenNotPaused
     {
@@ -325,6 +330,8 @@ contract DeedNFT is
         delete deedInfoMap[deedId];
         emit DeedNFTBurned(deedId);
     }
+
+    // Ensure burnAsset is declared before burnBatchAssets
 
     /**
      * @dev Batch burns multiple deeds owned by the caller.
