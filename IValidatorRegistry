@@ -11,13 +11,18 @@ interface IValidatorRegistry {
      * @param validator Address of the validator.
      * @return Name string.
      */
-    function getValidatorName(address validator) external view returns (string memory);
+    function getValidatorName(address validator)
+        external
+        view
+        returns (string memory);
 
     /**
      * @dev Checks if a validator is registered.
      * @param validator Address of the validator.
      * @return True if registered, false otherwise.
      */
-    function isValidatorRegistered(address validator) external view returns (bool);
+    function isValidatorRegistered(address validator)
+        external
+        view
+        returns (bool);
 }
-
