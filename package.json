@@ -1,1 +1,12 @@
-
+{
+  "name": "DeedNFT: ERC-721",
+  "description": "Tokenized Deed Standard by Deed3Labs",
+  "version": "1.0",
+  "author": "Deed3Labs, LLC. <dev@deed3.io>",
+  "contributors": [
+    "Isaiah @kyngkai909 Litt <isaiahlitt@deed3.io>",
+    "Corantin @gossman Noll <corantin@deed3.io>",
+    "Kevin @kafann Mansour <kev@deed3.io>"
+  ],
+  "license": "AGPL-3.0"
+}
