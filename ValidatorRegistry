@@ -1,1 +1,88 @@
+// SPDX-License-Identifier: AGPL-3.0
+pragma solidity ^0.8.20;
+
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "./IValidatorRegistry.sol";
+
+/**
+ * @title ValidatorRegistry
+ * @dev Registry for managing validator contracts.
+ */
+contract ValidatorRegistry is Initializable, OwnableUpgradeable, IValidatorRegistry {
+    // Mapping from validator address to validator name
+    mapping(address => string) private validatorNames;
+
+    // Events
+    event ValidatorRegistered(address indexed validator, string name);
+    event ValidatorRemoved(address indexed validator);
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    /**
+     * @dev Initializes the ValidatorRegistry contract.
+     */
+    function initialize() public initializer {
+        __Ownable_init();
+    }
+
+    /**
+     * @dev Registers a new validator.
+     * @param _validator Address of the validator contract.
+     * @param _name Name associated with the validator.
+     */
+    function registerValidator(address _validator, string memory _name) public onlyOwner {
+        require(_validator != address(0), "ValidatorRegistry: Invalid validator address");
+        require(bytes(_name).length > 0, "ValidatorRegistry: Name cannot be empty");
+        require(bytes(validatorNames[_validator]).length == 0, "ValidatorRegistry: Validator already registered");
+
+        validatorNames[_validator] = _name;
+        emit ValidatorRegistered(_validator, _name);
+    }
+
+    /**
+     * @dev Removes a validator from the registry.
+     * @param _validator Address of the validator contract.
+     */
+    function removeValidator(address _validator) public onlyOwner {
+        require(bytes(validatorNames[_validator]).length > 0, "ValidatorRegistry: Validator not registered");
+
+        delete validatorNames[_validator];
+        emit ValidatorRemoved(_validator);
+    }
+
+    /**
+     * @dev Updates the name of a registered validator.
+     * @param _validator Address of the validator contract.
+     * @param _newName New name to associate with the validator.
+     */
+    function updateValidatorName(address _validator, string memory _newName) public onlyOwner {
+        require(bytes(validatorNames[_validator]).length > 0, "ValidatorRegistry: Validator not registered");
+        require(bytes(_newName).length > 0, "ValidatorRegistry: Name cannot be empty");
+
+        validatorNames[_validator] = _newName;
+        emit ValidatorRegistered(_validator, _newName);
+    }
+
+    /**
+     * @dev Returns the name associated with a validator address.
+     * @param _validator Address of the validator.
+     * @return Name string.
+     */
+    function getValidatorName(address _validator) external view override returns (string memory) {
+        return validatorNames[_validator];
+    }
+
+    /**
+     * @dev Checks if a validator is registered.
+     * @param _validator Address of the validator.
+     * @return True if registered, false otherwise.
+     */
+    function isValidatorRegistered(address _validator) external view override returns (bool) {
+        return bytes(validatorNames[_validator]).length > 0;
+    }
+}
 
