@@ -1,16 +1,25 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.20;
 
+// OpenZeppelin Upgradeable Contracts
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
+
+// Interface
 import "./IValidator.sol";
 
 /**
  * @title Validator
  * @dev Validator contract for generating token URIs and managing operating agreements.
+ *      Implements UUPSUpgradeable for upgradability.
  */
-contract Validator is Initializable, OwnableUpgradeable, IValidator {
+contract Validator is
+    Initializable,
+    OwnableUpgradeable,
+    IValidator,
+    UUPSUpgradeable
+{
     using StringsUpgradeable for uint256;
 
     // Base URI for token metadata
@@ -27,6 +36,9 @@ contract Validator is Initializable, OwnableUpgradeable, IValidator {
     event DefaultOperatingAgreementUpdated(string newUri);
     event OperatingAgreementNameUpdated(string uri, string name);
 
+    // Storage gap for future upgrades
+    uint256[50] private __gap;
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -37,10 +49,27 @@ contract Validator is Initializable, OwnableUpgradeable, IValidator {
      * @param _baseUri Base URI for token metadata.
      * @param _defaultOperatingAgreementUri Default operating agreement URI.
      */
-    function initialize(string memory _baseUri, string memory _defaultOperatingAgreementUri) public initializer {
+    function initialize(
+        string memory _baseUri,
+        string memory _defaultOperatingAgreementUri
+    ) public initializer {
         __Ownable_init();
+        __UUPSUpgradeable_init();
+
         baseUri = _baseUri;
         defaultOperatingAgreementUri = _defaultOperatingAgreementUri;
+    }
+
+    /**
+     * @dev Authorizes the contract upgrade. Only the owner can upgrade.
+     * @param newImplementation Address of the new implementation contract.
+     */
+    function _authorizeUpgrade(address newImplementation)
+        internal
+        override
+        onlyOwner
+    {
+        // Authorization logic handled by onlyOwner modifier
     }
 
     // Public functions
@@ -77,7 +106,12 @@ contract Validator is Initializable, OwnableUpgradeable, IValidator {
      * @dev Returns the default operating agreement URI.
      * @return The default operating agreement URI.
      */
-    function defaultOperatingAgreement() external view override returns (string memory) {
+    function defaultOperatingAgreement()
+        external
+        view
+        override
+        returns (string memory)
+    {
         return defaultOperatingAgreementUri;
     }
 
@@ -86,7 +120,10 @@ contract Validator is Initializable, OwnableUpgradeable, IValidator {
      * @param _uri The URI of the operating agreement.
      * @param _name The name to associate with the URI.
      */
-    function setOperatingAgreementName(string memory _uri, string memory _name) public onlyOwner {
+    function setOperatingAgreementName(string memory _uri, string memory _name)
+        public
+        onlyOwner
+    {
         require(bytes(_uri).length > 0, "Validator: URI cannot be empty");
         require(bytes(_name).length > 0, "Validator: Name cannot be empty");
         operatingAgreementNames[_uri] = _name;
@@ -97,8 +134,14 @@ contract Validator is Initializable, OwnableUpgradeable, IValidator {
      * @dev Removes the name associated with an operating agreement URI.
      * @param _uri The URI to remove.
      */
-    function removeOperatingAgreementName(string memory _uri) public onlyOwner {
-        require(bytes(operatingAgreementNames[_uri]).length > 0, "Validator: URI does not exist");
+    function removeOperatingAgreementName(string memory _uri)
+        public
+        onlyOwner
+    {
+        require(
+            bytes(operatingAgreementNames[_uri]).length > 0,
+            "Validator: URI does not exist"
+        );
         delete operatingAgreementNames[_uri];
         emit OperatingAgreementNameUpdated(_uri, "");
     }
@@ -108,7 +151,12 @@ contract Validator is Initializable, OwnableUpgradeable, IValidator {
      * @param _uri The URI of the operating agreement.
      * @return The name string.
      */
-    function operatingAgreementName(string memory _uri) external view override returns (string memory) {
+    function operatingAgreementName(string memory _uri)
+        external
+        view
+        override
+        returns (string memory)
+    {
         return operatingAgreementNames[_uri];
     }
 
@@ -117,9 +165,13 @@ contract Validator is Initializable, OwnableUpgradeable, IValidator {
      * @param tokenId The ID of the token.
      * @return The token URI string.
      */
-    function tokenURI(uint256 tokenId) external view override returns (string memory) {
+    function tokenURI(uint256 tokenId)
+        external
+        view
+        override
+        returns (string memory)
+    {
         require(bytes(baseUri).length > 0, "Validator: Base URI is not set");
         return string(abi.encodePacked(baseUri, tokenId.toString()));
     }
 }
-
