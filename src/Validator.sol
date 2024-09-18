@@ -53,7 +53,7 @@ contract Validator is
         string memory _baseUri,
         string memory _defaultOperatingAgreementUri
     ) public initializer {
-        __Ownable_init();
+        __Ownable_init(msg.sender);
         __UUPSUpgradeable_init();
 
         baseUri = _baseUri;
