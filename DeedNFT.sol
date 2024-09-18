@@ -448,6 +448,21 @@ contract DeedNFT is
     }
 
     /**
+     * @dev Determines whether the asset can be subdivided based on its type.
+     * @param deedId ID of the deed.
+     * @return True if the asset can be subdivided, false otherwise.
+     */
+    function canSubdivide(uint256 deedId)
+        external
+        view
+        deedExists(deedId)
+        returns (bool)
+    {
+        AssetType assetType = deedInfoMap[deedId].assetType;
+        return assetType == AssetType.Land || assetType == AssetType.Estate;
+    }
+
+    /**
      * @dev Returns the token URI, potentially using a validator contract.
      * @param deedId ID of the deed.
      * @return The token URI string.
