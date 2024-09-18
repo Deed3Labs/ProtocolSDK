@@ -67,8 +67,6 @@ contract DeedNFT is
     event DeedNFTBurned(uint256 indexed deedId);
     event DeedNFTValidatedChanged(uint256 indexed deedId, bool isValid);
     event DeedNFTMetadataUpdated(uint256 indexed deedId);
-    event Paused(address account);
-    event Unpaused(address account);
 
     // Storage gap for future upgrades
     uint256[50] private __gap;
@@ -114,6 +112,10 @@ contract DeedNFT is
     }
 
     // Modifiers
+
+    function _exists(uint256 tokenId) internal view returns (bool) {
+        return _ownerOf(tokenId) != address(0);
+    }
 
     modifier deedExists(uint256 deedId) {
         require(_exists(deedId), "DeedNFT: Deed does not exist");
@@ -513,7 +515,7 @@ contract DeedNFT is
     function supportsInterface(bytes4 interfaceId)
         public
         view
-        override(ERC721Upgradeable, AccessControlUpgradeable)
+        override(ERC721URIStorageUpgradeable, AccessControlUpgradeable)
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
