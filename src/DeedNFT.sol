@@ -91,8 +91,8 @@ contract DeedNFT is
         __Pausable_init();
         __UUPSUpgradeable_init(); // Initialize UUPSUpgradeable
 
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender); // Changed to _grantRole
-        _grantRole(VALIDATOR_ROLE, msg.sender);     // Changed to _grantRole
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender); // Grant admin role
+        _grantRole(VALIDATOR_ROLE, msg.sender);     // Grant validator role to deployer
 
         defaultValidator = _defaultValidator;
         validatorRegistry = _validatorRegistry;
@@ -189,17 +189,18 @@ contract DeedNFT is
         validatorRegistry = registry;
     }
 
-    // Minting functions
+    // Consolidated Minting Function
 
     /**
      * @dev Mints a new deed to the specified owner.
+     *      If the minter has VALIDATOR_ROLE, the deed is validated and the validator is set to the minter.
+     *      Otherwise, the deed is marked as invalid.
      * @param owner Address of the deed owner.
      * @param assetType Type of the asset.
      * @param ipfsDetailsHash IPFS hash of the deed details.
      * @param operatingAgreement Operating agreement associated with the deed.
      * @param definition Definition of the deed.
      * @param configuration Configuration data for the deed.
-     * @param validator Address of the validator contract.
      * @return The ID of the minted deed.
      */
     function mintAsset(
@@ -208,9 +209,8 @@ contract DeedNFT is
         string memory ipfsDetailsHash,
         string memory operatingAgreement,
         string memory definition,
-        string memory configuration,
-        address validator
-    ) public onlyRole(VALIDATOR_ROLE) whenNotPaused returns (uint256) {
+        string memory configuration
+    ) public whenNotPaused returns (uint256) {
         require(owner != address(0), "DeedNFT: Invalid owner address");
         require(
             bytes(ipfsDetailsHash).length > 0,
@@ -224,32 +224,40 @@ contract DeedNFT is
             bytes(definition).length > 0,
             "DeedNFT: Definition is required"
         );
-        require(
-            validator != address(0),
-            "DeedNFT: Validator address is required"
-        );
 
-        // Ensure validator is registered and supports IValidator interface
-        require(
-            IValidatorRegistry(validatorRegistry).isValidatorRegistered(
-                validator
-            ),
-            "DeedNFT: Validator is not registered"
-        );
-        require(
-            IERC165Upgradeable(validator).supportsInterface(
-                type(IValidator).interfaceId
-            ),
-            "DeedNFT: Validator does not support IValidator interface"
-        );
+        bool isValidator = hasRole(VALIDATOR_ROLE, msg.sender);
+        bool isValidated;
+        address assignedValidator;
 
-        // Check if operating agreement is valid
-        string memory agreementName = IValidator(validator)
-            .operatingAgreementName(operatingAgreement);
-        require(
-            bytes(agreementName).length > 0,
-            "DeedNFT: Invalid operating agreement"
-        );
+        if (isValidator) {
+            assignedValidator = msg.sender;
+            isValidated = true;
+
+            // Ensure validator is registered and supports IValidator interface
+            require(
+                IValidatorRegistry(validatorRegistry).isValidatorRegistered(
+                    assignedValidator
+                ),
+                "DeedNFT: Validator is not registered"
+            );
+            require(
+                IERC165Upgradeable(assignedValidator).supportsInterface(
+                    type(IValidator).interfaceId
+                ),
+                "DeedNFT: Validator does not support IValidator interface"
+            );
+
+            // Check if operating agreement is valid
+            string memory agreementName = IValidator(assignedValidator)
+                .operatingAgreementName(operatingAgreement);
+            require(
+                bytes(agreementName).length > 0,
+                "DeedNFT: Invalid operating agreement"
+            );
+        } else {
+            assignedValidator = address(0);
+            isValidated = false;
+        }
 
         uint256 deedId = nextDeedId++;
         _mint(owner, deedId);
@@ -257,27 +265,27 @@ contract DeedNFT is
 
         DeedInfo storage deedInfo = deedInfoMap[deedId];
         deedInfo.assetType = assetType;
-        deedInfo.isValidated = true;
+        deedInfo.isValidated = isValidated;
         deedInfo.operatingAgreement = operatingAgreement;
         deedInfo.definition = definition;
         deedInfo.configuration = configuration;
-        deedInfo.validator = validator;
+        deedInfo.validator = assignedValidator;
 
-        emit DeedNFTMinted(deedId, deedInfo, msg.sender, validator);
+        emit DeedNFTMinted(deedId, deedInfo, msg.sender, assignedValidator);
         return deedId;
     }
 
-    // Ensure mintAsset is declared before mintBatchAssets
+    // Batch Minting Function remains restricted to VALIDATOR_ROLE
 
     /**
      * @dev Batch mints multiple deeds.
+     *      Only callable by addresses with VALIDATOR_ROLE.
      * @param owners Array of owner addresses.
      * @param assetTypes Array of asset types.
      * @param ipfsDetailsHashes Array of IPFS details hashes.
      * @param operatingAgreements Array of operating agreements.
      * @param definitions Array of definitions.
      * @param configurations Array of configurations.
-     * @param validators Array of validator addresses.
      * @return Array of minted deed IDs.
      */
     function mintBatchAssets(
@@ -286,8 +294,7 @@ contract DeedNFT is
         string[] memory ipfsDetailsHashes,
         string[] memory operatingAgreements,
         string[] memory definitions,
-        string[] memory configurations,
-        address[] memory validators
+        string[] memory configurations
     ) external onlyRole(VALIDATOR_ROLE) whenNotPaused returns (uint256[] memory) {
         uint256 len = owners.length;
         require(
@@ -295,8 +302,7 @@ contract DeedNFT is
                 len == ipfsDetailsHashes.length &&
                 len == operatingAgreements.length &&
                 len == definitions.length &&
-                len == configurations.length &&
-                len == validators.length,
+                len == configurations.length,
             "DeedNFT: Input arrays length mismatch"
         );
 
@@ -309,8 +315,7 @@ contract DeedNFT is
                 ipfsDetailsHashes[i],
                 operatingAgreements[i],
                 definitions[i],
-                configurations[i],
-                validators[i]
+                configurations[i]
             );
         }
 
@@ -333,8 +338,6 @@ contract DeedNFT is
         emit DeedNFTBurned(deedId);
     }
 
-    // Ensure burnAsset is declared before burnBatchAssets
-
     /**
      * @dev Batch burns multiple deeds owned by the caller.
      * @param deedIds Array of deed IDs to burn.
@@ -356,7 +359,49 @@ contract DeedNFT is
     // Validation functions
 
     /**
+     * @dev Validates a minted deed and assigns a validator.
+     *      Only callable by addresses with VALIDATOR_ROLE.
+     * @param deedId ID of the deed to validate.
+     */
+    function validateMintedAsset(uint256 deedId)
+        external
+        onlyRole(VALIDATOR_ROLE)
+        whenNotPaused
+    {
+        require(_exists(deedId), "DeedNFT: Deed does not exist");
+        DeedInfo storage deedInfo = deedInfoMap[deedId];
+        require(!deedInfo.isValidated, "DeedNFT: Deed is already validated");
+        require(deedInfo.validator == address(0), "DeedNFT: Validator already assigned");
+
+        // Ensure validator is registered and supports IValidator interface
+        require(
+            IValidatorRegistry(validatorRegistry).isValidatorRegistered(msg.sender),
+            "DeedNFT: Validator is not registered"
+        );
+        require(
+            IERC165Upgradeable(msg.sender).supportsInterface(
+                type(IValidator).interfaceId
+            ),
+            "DeedNFT: Validator does not support IValidator interface"
+        );
+
+        // Check if operating agreement is valid
+        string memory agreementName = IValidator(msg.sender)
+            .operatingAgreementName(deedInfo.operatingAgreement);
+        require(
+            bytes(agreementName).length > 0,
+            "DeedNFT: Invalid operating agreement"
+        );
+
+        deedInfo.isValidated = true;
+        deedInfo.validator = msg.sender;
+
+        emit DeedNFTValidatedChanged(deedId, true);
+    }
+
+    /**
      * @dev Validates or invalidates a deed.
+     *      Only callable by addresses with VALIDATOR_ROLE.
      * @param deedId ID of the deed.
      * @param isValid Validation status to set.
      */
@@ -377,6 +422,8 @@ contract DeedNFT is
 
     /**
      * @dev Updates the metadata of a deed.
+     *      Only callable by the owner or a validator.
+     *      If called by a non-validator, sets isValidated to false.
      * @param deedId ID of the deed.
      * @param ipfsDetailsHash New IPFS details hash.
      * @param operatingAgreement New operating agreement.
