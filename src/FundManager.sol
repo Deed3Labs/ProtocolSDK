@@ -9,7 +9,8 @@ import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
-// Interface for ValidatorRegistry
+// Interfaces
+
 interface IValidatorRegistry {
     /**
      * @dev Returns the owner of the given Validator Contract.
@@ -19,7 +20,6 @@ interface IValidatorRegistry {
     function getValidatorOwner(address validatorContract) external view returns (address owner);
 }
 
-// Interface for DeedNFT's AccessControl
 interface IDeedNFTAccessControl {
     /**
      * @dev Returns `true` if `account` has been granted `role`.
@@ -27,7 +27,6 @@ interface IDeedNFTAccessControl {
     function hasRole(bytes32 role, address account) external view returns (bool);
 }
 
-// Interface for DeedNFT's mintAsset function
 interface IDeedNFT {
     enum AssetType {
         Land,
@@ -54,9 +53,6 @@ contract FundManager is
 {
     using AddressUpgradeable for address payable;
     using SafeERC20Upgradeable for IERC20Upgradeable;
-
-    // Role Definitions
-    bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
 
     // State Variables
 
@@ -89,6 +85,18 @@ contract FundManager is
 
     /// @notice Mapping to store accumulated commissions per validator owner and token
     mapping(address => mapping(address => uint256)) public commissionBalances;
+
+    // Struct for batch minting
+    struct DeedMintData {
+        IDeedNFT.AssetType assetType;
+        string ipfsDetailsHash;
+        string operatingAgreement;
+        string definition;
+        string configuration;
+        address validatorContract;
+        address token;
+        string ipfsTokenURI;
+    }
 
     // Events
 
@@ -369,17 +377,6 @@ contract FundManager is
     }
 
     /**
-     * @dev Sets the FundManager contract address.
-     *      Only callable by accounts with DEFAULT_ADMIN_ROLE.
-     * @param _fundManager Address of the FundManager contract.
-     */
-    function setFundManager(address _fundManager) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(_fundManager != address(0), "FundManager: Invalid FundManager address");
-        fundManager = _fundManager;
-        emit FundManagerUpdated(_fundManager);
-    }
-
-    /**
      * @dev Allows users to deposit funds and mint a single DeedNFT in a single transaction.
      *      The service fee is deducted as a flat fee, and a commission is allocated to the ValidatorContract owner.
      * @param assetType Type of the asset.
@@ -405,6 +402,82 @@ contract FundManager is
         require(isWhitelisted[token], "FundManager: Token not whitelisted");
         require(validatorContract != address(0), "FundManager: Invalid ValidatorContract address");
 
+        // Create a struct to hold the mint data
+        DeedMintData memory deedData = DeedMintData({
+            assetType: assetType,
+            ipfsDetailsHash: ipfsDetailsHash,
+            operatingAgreement: operatingAgreement,
+            definition: definition,
+            configuration: configuration,
+            validatorContract: validatorContract,
+            token: token,
+            ipfsTokenURI: ipfsTokenURI
+        });
+
+        // Call internal function to process the mint
+        return _processMint(deedData);
+    }
+
+    /**
+     * @dev Internal function to process the minting of a single deed.
+     * @param deedData DeedMintData struct containing data for the deed to mint.
+     * @return deedId The ID of the minted deed.
+     */
+    function _processMint(DeedMintData memory deedData) internal returns (uint256 deedId) {
+        bool isValidator = deedNFT != address(0) && IDeedNFTAccessControl(deedNFT).hasRole(
+            keccak256("VALIDATOR_ROLE"),
+            msg.sender
+        );
+
+        uint256 serviceFee = isValidator ? serviceFeeValidator[deedData.token] : serviceFeeRegular[deedData.token];
+        require(serviceFee > 0, "FundManager: Service fee not set for token");
+
+        uint256 commissionPercentage = isValidator ? commissionPercentageValidator : commissionPercentageRegular;
+
+        IERC20Upgradeable(deedData.token).safeTransferFrom(msg.sender, address(this), serviceFee);
+        serviceFeesBalance[deedData.token] += serviceFee;
+
+        address validatorOwner = IValidatorRegistry(validatorRegistry).getValidatorOwner(deedData.validatorContract);
+        require(validatorOwner != address(0), "FundManager: Validator owner not found");
+
+        uint256 commission = (serviceFee * commissionPercentage) / 10000;
+        commissionBalances[validatorOwner][deedData.token] += commission;
+
+        deedId = IDeedNFT(deedNFT).mintAsset(
+            msg.sender,
+            deedData.assetType,
+            deedData.ipfsDetailsHash,
+            deedData.operatingAgreement,
+            deedData.definition,
+            deedData.configuration
+        );
+
+        emit FundsDeposited(msg.sender, deedData.token, serviceFee, serviceFee, commission, validatorOwner);
+    }
+
+    /**
+     * @dev Batch mints multiple DeedNFTs.
+     * @param deeds Array of DeedMintData structs containing data for each deed to mint.
+     * @return deedIds Array of minted deed IDs.
+     */
+    function mintBatchDeedNFT(DeedMintData[] memory deeds) external nonReentrant returns (uint256[] memory deedIds) {
+        uint256 len = deeds.length;
+        deedIds = new uint256[](len);
+
+        for (uint256 i = 0; i < len; i++) {
+            deedIds[i] = _mintDeed(deeds[i]);
+        }
+    }
+
+    /**
+     * @dev Internal function to mint a single deed. Reduces stack usage by handling each mint in isolation.
+     * @param deed DeedMintData struct containing data for the deed to mint.
+     * @return deedId The ID of the minted deed.
+     */
+    function _mintDeed(DeedMintData memory deed) internal returns (uint256 deedId) {
+        require(isWhitelisted[deed.token], "FundManager: Token not whitelisted");
+        require(deed.validatorContract != address(0), "FundManager: Invalid ValidatorContract address");
+
         // Determine if the user has the VALIDATOR_ROLE in DeedNFT
         bool isValidator = false;
         if (deedNFT != address(0)) {
@@ -415,132 +488,42 @@ contract FundManager is
         }
 
         // Get the appropriate service fee
-        uint256 serviceFee = isValidator ? serviceFeeValidator[token] : serviceFeeRegular[token];
+        uint256 serviceFee = isValidator ? serviceFeeValidator[deed.token] : serviceFeeRegular[deed.token];
         require(serviceFee > 0, "FundManager: Service fee not set for token");
 
         // Get the commission percentage based on user type
         uint256 commissionPercentage = isValidator ? commissionPercentageValidator : commissionPercentageRegular;
 
         // Transfer service fee from user to FundManager
-        IERC20Upgradeable(token).safeTransferFrom(msg.sender, address(this), serviceFee);
+        IERC20Upgradeable(deed.token).safeTransferFrom(msg.sender, address(this), serviceFee);
 
         // Accumulate service fees
-        serviceFeesBalance[token] += serviceFee;
+        serviceFeesBalance[deed.token] += serviceFee;
 
         // Retrieve the owner of the ValidatorContract from ValidatorRegistry
-        address validatorOwner = IValidatorRegistry(validatorRegistry).getValidatorOwner(validatorContract);
+        address validatorOwner = IValidatorRegistry(validatorRegistry).getValidatorOwner(deed.validatorContract);
         require(validatorOwner != address(0), "FundManager: Validator owner not found");
 
         // Calculate commission based on service fee
         uint256 commission = (serviceFee * commissionPercentage) / 10000;
 
         // Accumulate commission for the ValidatorContract owner
-        commissionBalances[validatorOwner][token] += commission;
+        commissionBalances[validatorOwner][deed.token] += commission;
 
         // Interact with DeedNFT to mint the deed
         deedId = IDeedNFT(deedNFT).mintAsset(
             msg.sender,
-            assetType,
-            ipfsDetailsHash,
-            operatingAgreement,
-            definition,
-            configuration
+            deed.assetType,
+            deed.ipfsDetailsHash,
+            deed.operatingAgreement,
+            deed.definition,
+            deed.configuration
         );
 
         // Emit event
-        emit FundsDeposited(msg.sender, token, serviceFee, serviceFee, commission, validatorOwner);
+        emit FundsDeposited(msg.sender, deed.token, serviceFee, serviceFee, commission, validatorOwner);
 
-        // Note: To retrieve the deedId, you might need to listen to the DeedNFTMinted event off-chain.
-    }
-
-    /**
-     * @dev Batch mints multiple DeedNFTs.
-     *      Only callable by the FundManager.
-     * @param assetTypes Array of asset types.
-     * @param ipfsDetailsHashes Array of IPFS details hashes.
-     * @param operatingAgreements Array of operating agreements.
-     * @param definitions Array of definitions.
-     * @param configurations Array of configurations.
-     * @param validatorContracts Array of ValidatorContract addresses.
-     * @param tokens Array of token addresses used for payment.
-     * @param ipfsTokenURIs Array of token URIs for the minted NFTs.
-     * @return deedIds Array of minted deed IDs.
-     */
-    function mintBatchDeedNFT(
-        IDeedNFT.AssetType[] memory assetTypes,
-        string[] memory ipfsDetailsHashes,
-        string[] memory operatingAgreements,
-        string[] memory definitions,
-        string[] memory configurations,
-        address[] memory validatorContracts,
-        address[] memory tokens,
-        string[] memory ipfsTokenURIs
-    ) external nonReentrant returns (uint256[] memory deedIds) {
-        uint256 len = assetTypes.length;
-        require(
-            len == ipfsDetailsHashes.length &&
-                len == operatingAgreements.length &&
-                len == definitions.length &&
-                len == configurations.length &&
-                len == validatorContracts.length &&
-                len == tokens.length &&
-                len == ipfsTokenURIs.length,
-            "FundManager: Input arrays length mismatch"
-        );
-
-        deedIds = new uint256[](len);
-
-        for (uint256 i = 0; i < len; i++) {
-            // Validate token
-            require(isWhitelisted[tokens[i]], "FundManager: Token not whitelisted");
-
-            // Determine if the user has the VALIDATOR_ROLE in DeedNFT
-            bool isValidator = false;
-            if (deedNFT != address(0)) {
-                isValidator = IDeedNFTAccessControl(deedNFT).hasRole(
-                    keccak256("VALIDATOR_ROLE"),
-                    msg.sender
-                );
-            }
-
-            // Get the appropriate service fee
-            uint256 serviceFee = isValidator ? serviceFeeValidator[tokens[i]] : serviceFeeRegular[tokens[i]];
-            require(serviceFee > 0, "FundManager: Service fee not set for token");
-
-            // Get the commission percentage based on user type
-            uint256 commissionPercentage = isValidator ? commissionPercentageValidator : commissionPercentageRegular;
-
-            // Transfer service fee from user to FundManager
-            IERC20Upgradeable(tokens[i]).safeTransferFrom(msg.sender, address(this), serviceFee);
-
-            // Accumulate service fees
-            serviceFeesBalance[tokens[i]] += serviceFee;
-
-            // Retrieve the owner of the ValidatorContract from ValidatorRegistry
-            address validatorOwner = IValidatorRegistry(validatorRegistry).getValidatorOwner(validatorContracts[i]);
-            require(validatorOwner != address(0), "FundManager: Validator owner not found");
-
-            // Calculate commission based on service fee
-            uint256 commission = (serviceFee * commissionPercentage) / 10000;
-
-            // Accumulate commission for the ValidatorContract owner
-            commissionBalances[validatorOwner][tokens[i]] += commission;
-
-            // Interact with DeedNFT to mint the deed
-            uint256 deedId = IDeedNFT(deedNFT).mintAsset(
-                msg.sender,
-                assetTypes[i],
-                ipfsDetailsHashes[i],
-                operatingAgreements[i],
-                definitions[i],
-                configurations[i]
-            );
-
-            deedIds[i] = deedId;
-
-            // Emit event for each deposit
-            emit FundsDeposited(msg.sender, tokens[i], serviceFee, serviceFee, commission, validatorOwner);
-        }
+        return deedId;
     }
 
     /**
