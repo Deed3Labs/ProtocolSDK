@@ -57,6 +57,9 @@ contract DeedNFT is
     address private defaultValidator;
     address private validatorRegistry;
 
+    // New: FundManager address
+    address public fundManager;
+
     // Events
     event DeedNFTMinted(
         uint256 indexed deedId,
@@ -67,6 +70,7 @@ contract DeedNFT is
     event DeedNFTBurned(uint256 indexed deedId);
     event DeedNFTValidatedChanged(uint256 indexed deedId, bool isValid);
     event DeedNFTMetadataUpdated(uint256 indexed deedId);
+    event FundManagerUpdated(address indexed newFundManager);
 
     // Storage gap for future upgrades
     uint256[50] private __gap;
@@ -80,10 +84,12 @@ contract DeedNFT is
      * @dev Initializes the contract with default validator and registry addresses.
      * @param _defaultValidator Address of the default validator contract.
      * @param _validatorRegistry Address of the validator registry contract.
+     * @param _fundManager Address of the FundManager contract.
      */
     function initialize(
         address _defaultValidator,
-        address _validatorRegistry
+        address _validatorRegistry,
+        address _fundManager
     ) public initializer {
         __ERC721_init("DeedNFT", "DEED");
         __ERC721URIStorage_init();
@@ -96,6 +102,7 @@ contract DeedNFT is
 
         defaultValidator = _defaultValidator;
         validatorRegistry = _validatorRegistry;
+        fundManager = _fundManager;
         nextDeedId = 1;
     }
 
@@ -136,6 +143,12 @@ contract DeedNFT is
                 ownerOf(deedId) == msg.sender,
             "DeedNFT: Caller is not validator or owner"
         );
+        _;
+    }
+
+    // New Modifier: Only FundManager can call certain functions
+    modifier onlyFundManager() {
+        require(msg.sender == fundManager, "DeedNFT: Caller is not FundManager");
         _;
     }
 
@@ -189,10 +202,24 @@ contract DeedNFT is
         validatorRegistry = registry;
     }
 
+    // New: Setter for FundManager
+
+    /**
+     * @dev Sets the FundManager contract address.
+     *      Only callable by accounts with DEFAULT_ADMIN_ROLE.
+     * @param _fundManager Address of the FundManager contract.
+     */
+    function setFundManager(address _fundManager) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_fundManager != address(0), "DeedNFT: Invalid FundManager address");
+        fundManager = _fundManager;
+        emit FundManagerUpdated(_fundManager);
+    }
+
     // Consolidated Minting Function
 
     /**
      * @dev Mints a new deed to the specified owner.
+     *      Only callable by the FundManager contract.
      *      If the minter has VALIDATOR_ROLE, the deed is validated and the validator is set to the minter.
      *      Otherwise, the deed is marked as invalid.
      * @param owner Address of the deed owner.
@@ -210,7 +237,7 @@ contract DeedNFT is
         string memory operatingAgreement,
         string memory definition,
         string memory configuration
-    ) public whenNotPaused returns (uint256) {
+    ) external whenNotPaused onlyFundManager returns (uint256) {
         require(owner != address(0), "DeedNFT: Invalid owner address");
         require(
             bytes(ipfsDetailsHash).length > 0,
@@ -225,6 +252,7 @@ contract DeedNFT is
             "DeedNFT: Definition is required"
         );
 
+        // Determine if the FundManager has the VALIDATOR_ROLE
         bool isValidator = hasRole(VALIDATOR_ROLE, msg.sender);
         bool isValidated;
         address assignedValidator;
@@ -275,52 +303,7 @@ contract DeedNFT is
         return deedId;
     }
 
-    // Batch Minting Function remains restricted to VALIDATOR_ROLE
-
-    /**
-     * @dev Batch mints multiple deeds.
-     *      Only callable by addresses with VALIDATOR_ROLE.
-     * @param owners Array of owner addresses.
-     * @param assetTypes Array of asset types.
-     * @param ipfsDetailsHashes Array of IPFS details hashes.
-     * @param operatingAgreements Array of operating agreements.
-     * @param definitions Array of definitions.
-     * @param configurations Array of configurations.
-     * @return Array of minted deed IDs.
-     */
-    function mintBatchAssets(
-        address[] memory owners,
-        AssetType[] memory assetTypes,
-        string[] memory ipfsDetailsHashes,
-        string[] memory operatingAgreements,
-        string[] memory definitions,
-        string[] memory configurations
-    ) external onlyRole(VALIDATOR_ROLE) whenNotPaused returns (uint256[] memory) {
-        uint256 len = owners.length;
-        require(
-            len == assetTypes.length &&
-                len == ipfsDetailsHashes.length &&
-                len == operatingAgreements.length &&
-                len == definitions.length &&
-                len == configurations.length,
-            "DeedNFT: Input arrays length mismatch"
-        );
-
-        uint256[] memory deedIds = new uint256[](len);
-
-        for (uint256 i = 0; i < len; i++) {
-            deedIds[i] = mintAsset(
-                owners[i],
-                assetTypes[i],
-                ipfsDetailsHashes[i],
-                operatingAgreements[i],
-                definitions[i],
-                configurations[i]
-            );
-        }
-
-        return deedIds;
-    }
+    // Removed the mintBatchAssets function to prevent unauthorized access
 
     // Burning functions
 
