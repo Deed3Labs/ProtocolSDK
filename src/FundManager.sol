@@ -561,8 +561,8 @@ contract FundManager is
      * @param token Address of the token.
      * @return balance The current service fees balance for the token.
      */
-    function getServiceFeesBalance(address token) external view returns (uint256 balance) {
-        balance = serviceFeesBalance[token];
+    function getServiceFeesBalance(address token) external view returns (uint256) {
+        return serviceFeesBalance[token];
     }
 
     /**
@@ -571,17 +571,17 @@ contract FundManager is
      * @param token Address of the token.
      * @return balance The current commission balance for the user and token.
      */
-    function getCommissionBalance(address user, address token) external view returns (uint256 balance) {
-        balance = commissionBalances[user][token];
+    function getCommissionBalance(address user, address token) external view returns (uint256) {
+        return commissionBalances[user][token];
     }
 
     /**
      * @dev Checks if a token is whitelisted.
      * @param token Address of the token.
-     * @return isTokenWhitelisted Boolean indicating if the token is whitelisted.
+     * @return Boolean indicating if the token is whitelisted.
      */
-    function isTokenWhitelisted(address token) external view returns (bool isTokenWhitelisted) {
-        isTokenWhitelisted = isWhitelisted[token];
+    function isTokenWhitelisted(address token) external view returns (bool) {
+        return isWhitelisted[token];
     }
 
     /**
@@ -590,8 +590,8 @@ contract FundManager is
      * @param isValidator Boolean indicating if the user is a validator.
      * @return fee The service fee amount for the token and user type.
      */
-    function getServiceFee(address token, bool isValidator) external view returns (uint256 fee) {
-        fee = isValidator ? serviceFeeValidator[token] : serviceFeeRegular[token];
+    function getServiceFee(address token, bool isValidator) external view returns (uint256) {
+        return isValidator ? serviceFeeValidator[token] : serviceFeeRegular[token];
     }
 
     /**
@@ -599,7 +599,7 @@ contract FundManager is
      * @param isValidator Boolean indicating if the user is a validator.
      * @return percentage The commission percentage in basis points.
      */
-    function getCommissionPercentage(bool isValidator) external view returns (uint256 percentage) {
-        percentage = isValidator ? commissionPercentageValidator : commissionPercentageRegular;
+    function getCommissionPercentage(bool isValidator) external view returns (uint256) {
+        return isValidator ? commissionPercentageValidator : commissionPercentageRegular;
     }
 }
