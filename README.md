@@ -6,6 +6,13 @@ This repository contains the smart contracts for **The Deed Protocol**, which fa
 
 The Deed Protocol brings blockchain technology to real property transactions by tokenizing property ownership and management. Each property deed or title is represented as a unique non-fungible token (NFT) on the blockchain, providing decentralized, secure, and transparent records of ownership.
 
+Key components of the protocol include:
+
+DeedNFT: The core NFT representing property deeds.
+Validator: A smart contract that verifies the integrity and authenticity of deed data.
+ValidatorRegistry: A registry for managing and tracking validators responsible for validating deeds.
+FundManager: A smart contract for managaging, distributing and maintaing securtiy over transactinon funds.
+
 ## Key Components
 
 ### 1. DeedNFT
