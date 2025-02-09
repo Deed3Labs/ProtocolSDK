@@ -1,10 +1,10 @@
 # DeedNFT Contracts - The Deed Protocol
 
-This repository contains the smart contracts for **The Deed Protocol**, which facilitates decentralized real property transactions through NFTs. These contracts represent real world assets as ERC721 tokens, ensuring seamless integration with external validation services and enabling future enhancements.
+This repository contains the smart contracts for **The Deed Protocol**, which facilitates decentralized Real World Asset transactions via Smart Contracts. These contracts represent real world assets as ERC721 tokens, ensuring seamless integration with external validation services and enabling future enhancements.
 
 ## Overview
 
-The Deed Protocol brings blockchain technology to real property transactions by tokenizing property ownership and management. Each property deed or title is represented as a unique non-fungible token (NFT) on the blockchain, providing decentralized, secure, and transparent records of ownership.
+The Deed Protocol uses legal engineering to merge technology with Real World Assets by tokenizing ownership, valaditation and administration. Each property deed or title is represented as a unique non-fungible token (NFT) on the blockchain, providing decentralized, secure, and transparent records of ownership.
 
 Key components of the protocol include:
 - **DeedNFT**: The core NFT representing property deeds.
@@ -18,7 +18,7 @@ Key components of the protocol include:
 
 [View Contract on GitHub](https://github.com/Deed3Labs/DeedNFT-Contracts/blob/contract-changes/src/DeedNFT.sol)
 
-The `DeedNFT` contract is the core ERC721 token representing real property deeds and titles. It includes several important features:
+The `DeedNFT` contract is the core ERC721 token representing real world assets. It includes several important features:
 
 - **Custom Metadata:** Each deed is linked to metadata stored on decentralized platforms (e.g., IPFS), which can include detailed property information.
 - **Validation Integration:** Works in conjunction with validator contracts to ensure that deed data is authentic and correct.
