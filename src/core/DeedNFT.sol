@@ -18,7 +18,17 @@ import "./IValidatorRegistry.sol";
 /**
  * @title DeedNFT
  * @dev An ERC-721 token representing deeds with complex metadata and validator integration.
- *      Implements UUPSUpgradeable for upgradability.
+ *      Enables creation and management of digital deed assets with validation support.
+ *      
+ * Security:
+ * - Role-based access control for validators and admins
+ * - Pausable functionality for emergency stops
+ * - Validated asset management
+ * 
+ * Integration:
+ * - Works with ValidatorRegistry for validator management
+ * - Supports FundManager for financial operations
+ * - Implements UUPSUpgradeable for upgradability
  */
 contract DeedNFT is
     Initializable,
@@ -30,10 +40,26 @@ contract DeedNFT is
     using StringsUpgradeable for uint256;
     using AddressUpgradeable for address;
 
-    // Role definitions
+    // ============ Role Definitions ============
+
+    /// @notice Role for validator operations
+    /// @dev Has authority to validate and update deed status
     bytes32 public constant VALIDATOR_ROLE = keccak256("VALIDATOR_ROLE");
 
-    // Deed information structure
+    // ============ Data Structures ============
+
+    /**
+     * @title DeedInfo
+     * @dev Comprehensive information about a deed asset
+     * 
+     * @param assetType Type of the asset (Land, Vehicle, etc.)
+     * @param isValidated Whether the deed has been validated
+     * @param operatingAgreement URI of the operating agreement
+     * @param definition Asset definition metadata
+     * @param configuration Asset configuration metadata
+     * @param validator Address of the assigned validator
+     * @param __gap Reserved storage slots for future upgrades
+     */
     struct DeedInfo {
         AssetType assetType;
         bool isValidated;
@@ -44,7 +70,15 @@ contract DeedNFT is
         uint256[5] __gap; // Reserved for future use
     }
 
-    // Asset types enumeration
+    /**
+     * @title AssetType
+     * @dev Enumeration of supported asset types
+     * 
+     * Land - Real estate land assets
+     * Vehicle - Vehicular assets
+     * Estate - Complete estate properties
+     * CommercialEquipment - Business and industrial equipment
+     */
     enum AssetType {
         Land,
         Vehicle,
@@ -52,6 +86,10 @@ contract DeedNFT is
         CommercialEquipment
     }
 
+    // ============ State Variables ============
+    
+    /// @notice Counter for the next deed ID to be minted
+    /// @dev Increments with each new deed creation
     uint256 public nextDeedId;
     mapping(uint256 => DeedInfo) private deedInfoMap;
     address private defaultValidator;
@@ -60,7 +98,15 @@ contract DeedNFT is
     // New: FundManager address
     address public fundManager;
 
-    // Events
+    // ============ Events ============
+
+    /**
+     * @dev Emitted when a new deed is minted
+     * @param deedId Unique identifier of the minted deed
+     * @param deedInfo Complete deed information structure
+     * @param minter Address that initiated the minting
+     * @param validator Address of the assigned validator
+     */
     event DeedNFTMinted(
         uint256 indexed deedId,
         DeedInfo deedInfo,
