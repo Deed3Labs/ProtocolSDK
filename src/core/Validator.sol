@@ -5,59 +5,138 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
 // Interface
 import "./IValidator.sol";
 
 /**
+ * @title IDeedNFT Interface
+ * @dev Interface for interacting with the DeedNFT contract.
+ *      Required for deed validation and metadata access.
+ *      Ensures compatibility with the core DeedNFT contract.
+ */
+interface IDeedNFT {
+    enum AssetType { Land, Vehicle, Estate, CommercialEquipment }
+    function getDeedInfo(uint256 deedId) external view returns (
+        AssetType assetType,
+        bool isValidated,
+        string memory operatingAgreement,
+        string memory definition,
+        string memory configuration,
+        address validator
+    );
+}
+
+/**
  * @title Validator
- * @dev Validator contract for generating token URIs and managing operating agreements.
- *      Implements UUPSUpgradeable for upgradability.
+ * @dev Base contract for implementing deed validation logic.
+ *      Provides core functionality for asset validation and metadata management.
+ *      
+ * Security:
+ * - Role-based access control for validation operations
+ * - Protected metadata management
+ * - Configurable asset type support
+ * 
+ * Integration:
+ * - Works with DeedNFT for asset validation
+ * - Implements IValidator interface
+ * - Supports UUPSUpgradeable for upgradability
  */
 contract Validator is
     Initializable,
-    OwnableUpgradeable,
-    IValidator,
-    UUPSUpgradeable
+    AccessControlUpgradeable,
+    UUPSUpgradeable,
+    IValidator
 {
     using StringsUpgradeable for uint256;
 
-    // Base URI for token metadata
-    string private baseUri;
+    // ============ Role Definitions ============
 
-    // Mapping of operating agreement URIs to their names
-    mapping(string => string) private operatingAgreementNames;
+    /// @notice Role for validation operations
+    /// @dev Has authority to perform deed validations
+    bytes32 public constant VALIDATOR_ROLE = keccak256("VALIDATOR_ROLE");
 
-    // Default operating agreement URI
-    string private defaultOperatingAgreementUri;
+    /// @notice Role for metadata management
+    /// @dev Has authority to update operating agreements and URIs
+    bytes32 public constant METADATA_ROLE = keccak256("METADATA_ROLE");
 
-    // Events
-    event BaseUriUpdated(string newBaseUri);
-    event DefaultOperatingAgreementUpdated(string newUri);
-    event OperatingAgreementNameUpdated(string uri, string name);
+    // ============ State Variables ============
 
-    // Storage gap for future upgrades
+    /// @notice Reference to the DeedNFT contract
+    /// @dev Used for deed information retrieval and validation
+    IDeedNFT public deedNFT;
+
+    /// @notice Mapping of supported asset types
+    /// @dev Key: asset type ID, Value: support status
+    mapping(uint256 => bool) public supportedAssetTypes;
+
+    /// @notice Mapping of operating agreement URIs to their names
+    /// @dev Key: agreement URI, Value: human-readable name
+    mapping(string => string) public operatingAgreements;
+
+    /// @notice Mapping of deed IDs to their metadata URIs
+    /// @dev Key: deed ID, Value: metadata URI
+    mapping(uint256 => string) public deedMetadata;
+
+    // ============ Events ============
+
+    /**
+     * @dev Emitted when an asset type's support status is updated
+     * @param assetTypeId ID of the asset type
+     * @param isSupported New support status
+     */
+    event AssetTypeSupportUpdated(uint256 indexed assetTypeId, bool isSupported);
+
+    /**
+     * @dev Emitted when an operating agreement is registered
+     * @param uri URI of the agreement
+     * @param name Human-readable name of the agreement
+     */
+    event OperatingAgreementRegistered(string uri, string name);
+
+    /**
+     * @dev Emitted when a deed's metadata is updated
+     * @param deedId ID of the affected deed
+     * @param metadataUri New metadata URI
+     */
+    event DeedMetadataUpdated(uint256 indexed deedId, string metadataUri);
+
+    /**
+     * @dev Emitted when a deed is validated
+     * @param deedId ID of the validated deed
+     * @param success Validation result
+     */
+    event DeedValidated(uint256 indexed deedId, bool success);
+
+    // ============ Upgrade Gap ============
+
+    /// @dev Storage gap for future upgrades
     uint256[50] private __gap;
+
+    // ============ Constructor ============
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
+    // ============ Initializer ============
+
     /**
-     * @dev Initializes the Validator contract.
-     * @param _baseUri Base URI for token metadata.
-     * @param _defaultOperatingAgreementUri Default operating agreement URI.
+     * @dev Initializes the Validator contract
+     * @param _deedNFT Address of the DeedNFT contract
      */
-    function initialize(
-        string memory _baseUri,
-        string memory _defaultOperatingAgreementUri
-    ) public initializer {
-        __Ownable_init(msg.sender);
+    function initialize(address _deedNFT) public initializer {
+        __AccessControl_init();
         __UUPSUpgradeable_init();
 
-        baseUri = _baseUri;
-        defaultOperatingAgreementUri = _defaultOperatingAgreementUri;
+        require(_deedNFT != address(0), "Invalid DeedNFT address");
+        deedNFT = IDeedNFT(_deedNFT);
+
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(VALIDATOR_ROLE, msg.sender);
+        _grantRole(METADATA_ROLE, msg.sender);
     }
 
     /**
@@ -126,8 +205,8 @@ contract Validator is
     {
         require(bytes(_uri).length > 0, "Validator: URI cannot be empty");
         require(bytes(_name).length > 0, "Validator: Name cannot be empty");
-        operatingAgreementNames[_uri] = _name;
-        emit OperatingAgreementNameUpdated(_uri, _name);
+        operatingAgreements[_uri] = _name;
+        emit OperatingAgreementRegistered(_uri, _name);
     }
 
     /**
@@ -139,11 +218,11 @@ contract Validator is
         onlyOwner
     {
         require(
-            bytes(operatingAgreementNames[_uri]).length > 0,
+            bytes(operatingAgreements[_uri]).length > 0,
             "Validator: URI does not exist"
         );
-        delete operatingAgreementNames[_uri];
-        emit OperatingAgreementNameUpdated(_uri, "");
+        delete operatingAgreements[_uri];
+        emit OperatingAgreementRegistered(_uri, "");
     }
 
     /**
@@ -157,7 +236,7 @@ contract Validator is
         override
         returns (string memory)
     {
-        return operatingAgreementNames[_uri];
+        return operatingAgreements[_uri];
     }
 
     /**
