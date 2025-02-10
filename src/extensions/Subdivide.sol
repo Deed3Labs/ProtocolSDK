@@ -9,7 +9,8 @@ import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 
 /**
  * @title IDeedNFT Interface
- * @dev Interface for interacting with the DeedNFT contract
+ * @dev Interface for interacting with the DeedNFT contract.
+ *      Required for subdivision validation and ownership checks.
  */
 interface IDeedNFT {
     enum AssetType { Land, Vehicle, Estate, CommercialEquipment }
@@ -29,6 +30,7 @@ interface IDeedNFT {
  * @title Subdivide
  * @dev Contract for subdividing DeedNFTs into multiple ERC1155 tokens.
  *      Allows DeedNFT owners to create and manage subdivisions of their Land or Estate assets.
+ *      Each subdivision represents a collection of units or parcels tied to the original DeedNFT.
  *      Implements UUPSUpgradeable for upgradability.
  */
 contract Subdivide is 
@@ -48,28 +50,64 @@ contract Subdivide is
 
     /**
      * @dev Struct containing information about a subdivision
-     * @param name Name of the subdivision
+     * @param name Name of the subdivision collection
      * @param description Description of the subdivision
+     * @param symbol Symbol for the subdivision tokens
+     * @param collectionUri Base URI for the subdivision collection
      * @param totalUnits Total number of units in the subdivision
+     * @param activeUnits Number of currently active (minted and not burned) units
      * @param isActive Whether the subdivision is currently active
-     * @param unitMetadata Mapping of unit IDs to their metadata
+     * @param burnable Whether units in this subdivision can be burned
+     * @param unitMetadata Mapping of unit IDs to their metadata URIs
      */
     struct SubdivisionInfo {
         string name;
         string description;
+        string symbol;
+        string collectionUri;
         uint256 totalUnits;
+        uint256 activeUnits;
         bool isActive;
-        mapping(uint256 => string) unitMetadata; // Unit ID to metadata
+        bool burnable;
+        mapping(uint256 => string) unitMetadata;
     }
     
     // Mapping from DeedNFT ID to subdivision information
     mapping(uint256 => SubdivisionInfo) public subdivisions;
     
     // Events
+    /**
+     * @dev Emitted when a new subdivision is created
+     */
     event SubdivisionCreated(uint256 indexed deedId, string name, uint256 totalUnits);
+    
+    /**
+     * @dev Emitted when a unit is minted within a subdivision
+     */
     event UnitMinted(uint256 indexed deedId, uint256 indexed unitId, address to);
-    event SubdivisionDeactivated(uint256 indexed deedId);
+    
+    /**
+     * @dev Emitted when a subdivision's metadata is updated
+     */
     event UnitMetadataUpdated(uint256 indexed deedId, uint256 indexed unitId, string metadata);
+    
+    /**
+     * @dev Emitted when a subdivision is deactivated
+     */
+    event SubdivisionDeactivated(uint256 indexed deedId);
+    
+    /**
+     * @dev Emitted when a subdivision's burnable status is changed
+     */
+    event BurnableStatusChanged(uint256 indexed deedId, bool burnable);
+    
+    /**
+     * @dev Emitted when a unit is burned
+     */
+    event UnitBurned(uint256 indexed deedId, uint256 indexed unitId);
+
+    // Storage gap for future upgrades
+    uint256[50] private __gap;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -231,4 +269,3 @@ contract Subdivide is
         return super.supportsInterface(interfaceId);
     }
 }
-
