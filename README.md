@@ -50,7 +50,7 @@ The `ValidatorRegistry` contract manages a list of authorized validators, ensuri
 
 [View Contract on GitHub](https://github.com/Deed3Labs/DeedNFT-Contracts/blob/contract-changes/src/FundManager.sol)
 
-The `FundManager` contract is dedicated to managing funds associated with property transactions and exchanges within the protocol:
+The `FundManager` contract is dedicated to managing funds associated with property transactions and transfers within the protocol:
 
 - **Transaction Fee Management:** Handles the collection and processing of fees or service charges related to deed transfers and validations.
 - **Funds Allocation and Distribution:** Implements mechanisms to distribute collected funds among various stakeholders (such as validators, platform operators, or other designated parties) based on predetermined rules.
