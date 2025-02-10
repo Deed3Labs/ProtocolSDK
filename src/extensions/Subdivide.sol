@@ -11,6 +11,7 @@ import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
  * @title IDeedNFT Interface
  * @dev Interface for interacting with the DeedNFT contract.
  *      Required for subdivision validation and ownership checks.
+ *      Ensures compatibility with the core DeedNFT contract.
  */
 interface IDeedNFT {
     enum AssetType { Land, Vehicle, Estate, CommercialEquipment }
@@ -31,7 +32,16 @@ interface IDeedNFT {
  * @dev Contract for subdividing DeedNFTs into multiple ERC1155 tokens.
  *      Allows DeedNFT owners to create and manage subdivisions of their Land or Estate assets.
  *      Each subdivision represents a collection of units or parcels tied to the original DeedNFT.
- *      Implements UUPSUpgradeable for upgradability.
+ *      
+ * Security:
+ * - Only DeedNFT owners can create and manage subdivisions
+ * - Burning can be enabled/disabled per subdivision
+ * - Deactivation requires ownership of all active units
+ * 
+ * Integration:
+ * - Works with DeedNFT contract for ownership and validation
+ * - Supports ERC1155 standard for unit management
+ * - Implements UUPSUpgradeable for upgradability
  */
 contract Subdivide is 
     Initializable,
@@ -42,23 +52,33 @@ contract Subdivide is
 {
     using StringsUpgradeable for uint256;
 
-    // Role definitions
+    // ============ Role Definitions ============
+
+    /// @notice Role for administrative functions
+    /// @dev Has authority to pause/unpause contract and manage upgrades
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     
-    // Contract references
+    // ============ Contract References ============
+
+    /// @notice Reference to the DeedNFT contract
+    /// @dev Used for ownership verification and subdivision validation
     IDeedNFT public deedNFT;
 
+    // ============ Data Structures ============
+
     /**
-     * @dev Struct containing information about a subdivision
+     * @title SubdivisionInfo
+     * @dev Comprehensive information about a subdivision collection
+     * 
      * @param name Name of the subdivision collection
-     * @param description Description of the subdivision
-     * @param symbol Symbol for the subdivision tokens
-     * @param collectionUri Base URI for the subdivision collection
-     * @param totalUnits Total number of units in the subdivision
-     * @param activeUnits Number of currently active (minted and not burned) units
-     * @param isActive Whether the subdivision is currently active
-     * @param burnable Whether units in this subdivision can be burned
-     * @param unitMetadata Mapping of unit IDs to their metadata URIs
+     * @param description Description of the subdivision and its purpose
+     * @param symbol Trading symbol for the subdivision tokens
+     * @param collectionUri Base URI for the subdivision collection's metadata
+     * @param totalUnits Total number of units authorized for the subdivision
+     * @param activeUnits Current number of minted and non-burned units
+     * @param isActive Operational status of the subdivision
+     * @param burnable Whether token holders can burn their units
+     * @param unitMetadata Custom metadata URIs for specific units
      */
     struct SubdivisionInfo {
         string name;
@@ -72,47 +92,71 @@ contract Subdivide is
         mapping(uint256 => string) unitMetadata;
     }
     
-    // Mapping from DeedNFT ID to subdivision information
+    // ============ State Variables ============
+
+    /// @notice Mapping of DeedNFT IDs to their subdivision information
+    /// @dev Key: DeedNFT ID, Value: SubdivisionInfo struct
     mapping(uint256 => SubdivisionInfo) public subdivisions;
     
-    // Events
+    // ============ Events ============
+
     /**
      * @dev Emitted when a new subdivision is created
+     * @param deedId ID of the parent DeedNFT
+     * @param name Name of the subdivision
+     * @param totalUnits Total number of units authorized
      */
     event SubdivisionCreated(uint256 indexed deedId, string name, uint256 totalUnits);
     
     /**
      * @dev Emitted when a unit is minted within a subdivision
+     * @param deedId ID of the parent DeedNFT
+     * @param unitId ID of the minted unit
+     * @param to Address receiving the unit
      */
     event UnitMinted(uint256 indexed deedId, uint256 indexed unitId, address to);
     
     /**
-     * @dev Emitted when a subdivision's metadata is updated
+     * @dev Emitted when a unit's metadata is updated
+     * @param deedId ID of the parent DeedNFT
+     * @param unitId ID of the updated unit
+     * @param metadata New metadata URI
      */
     event UnitMetadataUpdated(uint256 indexed deedId, uint256 indexed unitId, string metadata);
     
     /**
      * @dev Emitted when a subdivision is deactivated
+     * @param deedId ID of the parent DeedNFT
      */
     event SubdivisionDeactivated(uint256 indexed deedId);
     
     /**
-     * @dev Emitted when a subdivision's burnable status is changed
+     * @dev Emitted when a subdivision's burnable status changes
+     * @param deedId ID of the parent DeedNFT
+     * @param burnable New burnable status
      */
     event BurnableStatusChanged(uint256 indexed deedId, bool burnable);
     
     /**
      * @dev Emitted when a unit is burned
+     * @param deedId ID of the parent DeedNFT
+     * @param unitId ID of the burned unit
      */
     event UnitBurned(uint256 indexed deedId, uint256 indexed unitId);
 
-    // Storage gap for future upgrades
+    // ============ Upgrade Gap ============
+
+    /// @dev Storage gap for future upgrades
     uint256[50] private __gap;
+
+    // ============ Constructor ============
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
+
+    // ============ Initializer ============
 
     /**
      * @dev Initializes the Subdivide contract
@@ -131,41 +175,76 @@ contract Subdivide is
         deedNFT = IDeedNFT(_deedNFT);
     }
 
+    // ============ Access Control Functions ============
+
     /**
      * @dev Authorizes contract upgrades
      * @param newImplementation Address of the new implementation contract
      */
-    function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
+    function _authorizeUpgrade(address newImplementation) 
+        internal 
+        override 
+        onlyRole(DEFAULT_ADMIN_ROLE) 
+    {}
+
+    // ============ Subdivision Management Functions ============
 
     /**
      * @dev Creates a new subdivision for a DeedNFT
      * @param deedId ID of the DeedNFT to subdivide
      * @param name Name of the subdivision
      * @param description Description of the subdivision
+     * @param symbol Symbol for the subdivision tokens
+     * @param collectionUri Base URI for the subdivision collection
      * @param totalUnits Total number of units to create
+     * @param burnable Whether units can be burned by holders
      */
     function createSubdivision(
         uint256 deedId,
         string memory name,
         string memory description,
-        uint256 totalUnits
+        string memory symbol,
+        string memory collectionUri,
+        uint256 totalUnits,
+        bool burnable
     ) external whenNotPaused {
         require(deedNFT.ownerOf(deedId) == msg.sender, "Not deed owner");
         require(deedNFT.canSubdivide(deedId), "Deed cannot be subdivided");
         require(totalUnits > 0, "Invalid units amount");
         require(!subdivisions[deedId].isActive, "Subdivision already exists");
+        require(bytes(symbol).length > 0, "Symbol required");
+        require(bytes(collectionUri).length > 0, "Collection URI required");
 
         SubdivisionInfo storage newSubdivision = subdivisions[deedId];
         newSubdivision.name = name;
         newSubdivision.description = description;
+        newSubdivision.symbol = symbol;
+        newSubdivision.collectionUri = collectionUri;
         newSubdivision.totalUnits = totalUnits;
+        newSubdivision.activeUnits = 0;
         newSubdivision.isActive = true;
+        newSubdivision.burnable = burnable;
 
         emit SubdivisionCreated(deedId, name, totalUnits);
     }
 
     /**
-     * @dev Mints a subdivision unit
+     * @dev Updates the burnable status of a subdivision
+     * @param deedId ID of the DeedNFT
+     * @param burnable New burnable status
+     */
+    function setBurnable(uint256 deedId, bool burnable) external {
+        require(deedNFT.ownerOf(deedId) == msg.sender, "Not deed owner");
+        require(subdivisions[deedId].isActive, "Subdivision not active");
+        
+        subdivisions[deedId].burnable = burnable;
+        emit BurnableStatusChanged(deedId, burnable);
+    }
+
+    // ============ Unit Management Functions ============
+
+    /**
+     * @dev Mints a new subdivision unit
      * @param deedId ID of the DeedNFT
      * @param unitId ID of the unit within the subdivision
      * @param to Address to receive the unit
@@ -185,21 +264,57 @@ contract Subdivide is
         _mint(to, tokenId, 1, "");
         
         subdivisions[deedId].unitMetadata[unitId] = metadata;
+        subdivisions[deedId].activeUnits += 1;
+        
         emit UnitMinted(deedId, unitId, to);
         emit UnitMetadataUpdated(deedId, unitId, metadata);
     }
 
     /**
-     * @dev Deactivates a subdivision
+     * @dev Burns a subdivision unit
+     * @param deedId ID of the DeedNFT
+     * @param unitId ID of the unit to burn
+     */
+    function burnUnit(uint256 deedId, uint256 unitId) external {
+        uint256 tokenId = _generateTokenId(deedId, unitId);
+        require(balanceOf(msg.sender, tokenId) > 0, "Not unit owner");
+        require(subdivisions[deedId].burnable, "Burning not allowed");
+        
+        _burn(msg.sender, tokenId, 1);
+        subdivisions[deedId].activeUnits -= 1;
+        
+        emit UnitBurned(deedId, unitId);
+    }
+
+    /**
+     * @dev Deactivates a subdivision if all units are owned by the DeedNFT owner or burned
      * @param deedId ID of the DeedNFT
      */
     function deactivateSubdivision(uint256 deedId) external {
-        require(deedNFT.ownerOf(deedId) == msg.sender, "Not deed owner");
+        address deedOwner = deedNFT.ownerOf(deedId);
+        require(deedOwner == msg.sender, "Not deed owner");
         require(subdivisions[deedId].isActive, "Subdivision not active");
         
-        subdivisions[deedId].isActive = false;
+        SubdivisionInfo storage subdivision = subdivisions[deedId];
+        
+        // Check if there are any active units not owned by the deed owner
+        for (uint256 i = 0; i < subdivision.totalUnits; i++) {
+            uint256 tokenId = _generateTokenId(deedId, i);
+            uint256 balance = balanceOf(msg.sender, tokenId);
+            if (balance > 0 && msg.sender != deedOwner) {
+                revert("Outstanding units exist");
+            }
+        }
+        
+        require(subdivision.activeUnits == 0 || 
+                subdivision.activeUnits == balanceOf(deedOwner, _generateTokenId(deedId, 0)), 
+                "Outstanding units exist");
+        
+        subdivision.isActive = false;
         emit SubdivisionDeactivated(deedId);
     }
+
+    // ============ View Functions ============
 
     /**
      * @dev Retrieves metadata for a specific unit
@@ -240,8 +355,19 @@ contract Subdivide is
         uint256 unitId = tokenId & ((1 << 128) - 1);
         
         require(subdivisions[deedId].isActive, "Subdivision not active");
-        return subdivisions[deedId].unitMetadata[unitId];
+        
+        if (bytes(subdivisions[deedId].unitMetadata[unitId]).length > 0) {
+            return subdivisions[deedId].unitMetadata[unitId];
+        }
+        
+        return string(abi.encodePacked(
+            subdivisions[deedId].collectionUri,
+            "/",
+            StringsUpgradeable.toString(unitId)
+        ));
     }
+
+    // ============ Admin Functions ============
 
     /**
      * @dev Pauses all contract operations
