@@ -27,14 +27,14 @@ interface IDeedNFTAccessControl {
     function hasRole(bytes32 role, address account) external view returns (bool);
 }
 
+/**
+ * @title IDeedNFT Interface
+ * @dev Interface for interacting with the DeedNFT contract.
+ *      Required for asset minting and type verification.
+ *      Ensures compatibility with the core DeedNFT contract.
+ */
 interface IDeedNFT {
-    enum AssetType {
-        Land,
-        Vehicle,
-        Estate,
-        CommercialEquipment
-    }
-
+    enum AssetType { Land, Vehicle, Estate, CommercialEquipment }
     function mintAsset(
         address owner,
         AssetType assetType,
@@ -45,6 +45,21 @@ interface IDeedNFT {
     ) external returns (uint256);
 }
 
+/**
+ * @title FundManager
+ * @dev Contract for managing financial operations related to DeedNFTs.
+ *      Handles service fees, token whitelisting, and payment processing.
+ *      
+ * Security:
+ * - Role-based access control for admin operations
+ * - Reentrancy protection for all financial transactions
+ * - Token whitelisting for accepted payments
+ * 
+ * Integration:
+ * - Works with DeedNFT contract for asset creation
+ * - Supports multiple ERC20 tokens for payments
+ * - Implements UUPSUpgradeable for upgradability
+ */
 contract FundManager is
     Initializable,
     AccessControlUpgradeable,
@@ -54,15 +69,24 @@ contract FundManager is
     using AddressUpgradeable for address payable;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    // State Variables
+    // ============ Role Definitions ============
 
-    /// @notice Mapping to track whitelisted tokens (e.g., USDC, others)
+    /// @notice Role for fee management operations
+    /// @dev Has authority to update service fees and whitelist tokens
+    bytes32 public constant FEE_MANAGER_ROLE = keccak256("FEE_MANAGER_ROLE");
+
+    // ============ State Variables ============
+
+    /// @notice Mapping to track whitelisted tokens
+    /// @dev Key: token address, Value: whitelist status
     mapping(address => bool) public isWhitelisted;
 
-    /// @notice Mapping to store service fees per token for regular users (in smallest unit, e.g., USDC has 6 decimals)
+    /// @notice Service fees for regular users per token
+    /// @dev Key: token address, Value: fee amount in token's smallest unit
     mapping(address => uint256) public serviceFeeRegular;
 
-    /// @notice Mapping to store service fees per token for validators (in smallest unit, e.g., USDC has 6 decimals)
+    /// @notice Service fees for validators per token
+    /// @dev Key: token address, Value: fee amount in token's smallest unit
     mapping(address => uint256) public serviceFeeValidator;
 
     /// @notice Commission percentage for regular users in basis points (e.g., 500 = 5%)
@@ -98,7 +122,26 @@ contract FundManager is
         string ipfsTokenURI;
     }
 
-    // Events
+    // ============ Events ============
+
+    /**
+     * @dev Emitted when a token is whitelisted or removed
+     * @param token Address of the affected token
+     * @param status New whitelist status
+     */
+    event TokenWhitelistUpdated(address indexed token, bool status);
+
+    /**
+     * @dev Emitted when service fees are updated
+     * @param token Address of the affected token
+     * @param regularFee New fee for regular users
+     * @param validatorFee New fee for validators
+     */
+    event ServiceFeesUpdated(
+        address indexed token,
+        uint256 regularFee,
+        uint256 validatorFee
+    );
 
     /**
      * @dev Emitted when the commission percentage for regular users is updated.
@@ -125,18 +168,6 @@ contract FundManager is
      * @param newServiceFee The new service fee amount in the token's smallest unit.
      */
     event ServiceFeeValidatorUpdated(address indexed token, uint256 newServiceFee);
-
-    /**
-     * @dev Emitted when a token is added to the whitelist.
-     * @param token The address of the token.
-     */
-    event TokenWhitelisted(address indexed token);
-
-    /**
-     * @dev Emitted when a token is removed from the whitelist.
-     * @param token The address of the token.
-     */
-    event TokenRemovedFromWhitelist(address indexed token);
 
     /**
      * @dev Emitted when the fee receiver address is updated.
@@ -287,7 +318,7 @@ contract FundManager is
         require(token != address(0), "FundManager: Invalid token address");
         require(!isWhitelisted[token], "FundManager: Token already whitelisted");
         isWhitelisted[token] = true;
-        emit TokenWhitelisted(token);
+        emit TokenWhitelistUpdated(token, true);
     }
 
     /**
@@ -297,7 +328,7 @@ contract FundManager is
     function removeWhitelistedToken(address token) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(isWhitelisted[token], "FundManager: Token not whitelisted");
         isWhitelisted[token] = false;
-        emit TokenRemovedFromWhitelist(token);
+        emit TokenWhitelistUpdated(token, false);
     }
 
     /**
