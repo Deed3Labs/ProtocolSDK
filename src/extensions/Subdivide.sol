@@ -241,33 +241,95 @@ contract Subdivide is
         emit BurnableStatusChanged(deedId, burnable);
     }
 
-    // ============ Unit Management Functions ============
+    // ============ Minting Functions ============
 
     /**
-     * @dev Mints a new subdivision unit
-     * @param deedId ID of the DeedNFT
-     * @param unitId ID of the unit within the subdivision
-     * @param to Address to receive the unit
-     * @param metadata Metadata URI for the unit
+     * @dev Mints a single subdivision unit to a specified address
+     * @notice If recipient address is zero, defaults to DeedNFT owner
+     * 
+     * @param deedId ID of the parent DeedNFT
+     * @param unitId ID of the unit to mint (must be less than totalUnits)
+     * @param to Address to receive the unit (address(0) defaults to DeedNFT owner)
+     * 
+     * Requirements:
+     * - Subdivision must be active
+     * - Unit ID must be valid
+     * - Caller must be DeedNFT owner
+     * - Contract must not be paused
+     * 
+     * Emits a {UnitMinted} event
      */
     function mintUnit(
         uint256 deedId,
         uint256 unitId,
-        address to,
-        string memory metadata
+        address to
     ) external whenNotPaused {
-        require(deedNFT.ownerOf(deedId) == msg.sender, "Not deed owner");
         require(subdivisions[deedId].isActive, "Subdivision not active");
         require(unitId < subdivisions[deedId].totalUnits, "Invalid unit ID");
-
-        uint256 tokenId = _generateTokenId(deedId, unitId);
-        _mint(to, tokenId, 1, "");
         
-        subdivisions[deedId].unitMetadata[unitId] = metadata;
+        address deedOwner = deedNFT.ownerOf(deedId);
+        require(msg.sender == deedOwner, "Not deed owner");
+        
+        address recipient = to == address(0) ? deedOwner : to;
+        uint256 tokenId = _generateTokenId(deedId, unitId);
+        
+        _mint(recipient, tokenId, 1, "");
         subdivisions[deedId].activeUnits += 1;
         
-        emit UnitMinted(deedId, unitId, to);
-        emit UnitMetadataUpdated(deedId, unitId, metadata);
+        emit UnitMinted(deedId, unitId, recipient);
+    }
+
+    /**
+     * @dev Mints multiple subdivision units in a single transaction
+     * @notice Allows batch minting of units to different addresses
+     * 
+     * @param deedId ID of the parent DeedNFT
+     * @param unitIds Array of unit IDs to mint (each must be less than totalUnits)
+     * @param recipients Array of addresses to receive the units (address(0) defaults to DeedNFT owner)
+     * 
+     * Requirements:
+     * - Subdivision must be active
+     * - All unit IDs must be valid
+     * - Arrays must be same length
+     * - Caller must be DeedNFT owner
+     * - Contract must not be paused
+     * 
+     * Security:
+     * - Validates all unit IDs before minting
+     * - Prevents array length mismatch exploits
+     * - Maintains accurate active units count
+     * 
+     * Emits multiple {UnitMinted} events, one for each minted unit
+     */
+    function batchMintUnits(
+        uint256 deedId,
+        uint256[] calldata unitIds,
+        address[] calldata recipients
+    ) external whenNotPaused {
+        require(subdivisions[deedId].isActive, "Subdivision not active");
+        require(unitIds.length == recipients.length, "Array length mismatch");
+        
+        address deedOwner = deedNFT.ownerOf(deedId);
+        require(msg.sender == deedOwner, "Not deed owner");
+        
+        uint256[] memory tokenIds = new uint256[](unitIds.length);
+        uint256[] memory amounts = new uint256[](unitIds.length);
+        address[] memory finalRecipients = new address[](unitIds.length);
+        
+        // Validate all inputs before minting
+        for (uint256 i = 0; i < unitIds.length; i++) {
+            require(unitIds[i] < subdivisions[deedId].totalUnits, "Invalid unit ID");
+            tokenIds[i] = _generateTokenId(deedId, unitIds[i]);
+            amounts[i] = 1;
+            finalRecipients[i] = recipients[i] == address(0) ? deedOwner : recipients[i];
+        }
+        
+        // Perform minting operations
+        for (uint256 i = 0; i < unitIds.length; i++) {
+            _mint(finalRecipients[i], tokenIds[i], 1, "");
+            subdivisions[deedId].activeUnits += 1;
+            emit UnitMinted(deedId, unitIds[i], finalRecipients[i]);
+        }
     }
 
     /**
