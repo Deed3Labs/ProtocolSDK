@@ -78,6 +78,7 @@ contract Subdivide is
      * @param activeUnits Current number of minted and non-burned units
      * @param isActive Operational status of the subdivision
      * @param burnable Whether token holders can burn their units
+     * @param collectionAdmin Address of the collection admin
      * @param unitMetadata Custom metadata URIs for specific units
      */
     struct SubdivisionInfo {
@@ -89,6 +90,7 @@ contract Subdivide is
         uint256 activeUnits;
         bool isActive;
         bool burnable;
+        address collectionAdmin;
         mapping(uint256 => string) unitMetadata;
     }
     
@@ -143,6 +145,21 @@ contract Subdivide is
      * @param unitId ID of the burned unit
      */
     event UnitBurned(uint256 indexed deedId, uint256 indexed unitId);
+
+    /**
+     * @dev Emitted when a collection admin changes
+     * @param deedId ID of the DeedNFT
+     * @param newAdmin Address of the new admin
+     */
+    event CollectionAdminChanged(uint256 indexed deedId, address indexed newAdmin);
+
+    /**
+     * @dev Emitted when a collection admin is transferred
+     * @param deedId ID of the DeedNFT
+     * @param previousAdmin Address of the previous admin
+     * @param newAdmin Address of the new admin
+     */
+    event CollectionAdminTransferred(uint256 indexed deedId, address indexed previousAdmin, address indexed newAdmin);
 
     // ============ Upgrade Gap ============
 
@@ -224,6 +241,7 @@ contract Subdivide is
         newSubdivision.activeUnits = 0;
         newSubdivision.isActive = true;
         newSubdivision.burnable = burnable;
+        newSubdivision.collectionAdmin = msg.sender;
 
         emit SubdivisionCreated(deedId, name, totalUnits);
     }
@@ -233,12 +251,27 @@ contract Subdivide is
      * @param deedId ID of the DeedNFT
      * @param burnable New burnable status
      */
-    function setBurnable(uint256 deedId, bool burnable) external {
-        require(deedNFT.ownerOf(deedId) == msg.sender, "Not deed owner");
+    function setBurnable(uint256 deedId, bool burnable) external onlyCollectionAdmin(deedId) {
         require(subdivisions[deedId].isActive, "Subdivision not active");
-        
         subdivisions[deedId].burnable = burnable;
         emit BurnableStatusChanged(deedId, burnable);
+    }
+
+    /**
+     * @dev Sets the metadata for a specific unit in a subdivision
+     * @param deedId ID of the DeedNFT
+     * @param unitId ID of the unit
+     * @param metadata New metadata URI
+     */
+    function setUnitMetadata(uint256 deedId, uint256 unitId, string calldata metadata) 
+        external 
+        onlyCollectionAdmin(deedId) 
+    {
+        require(subdivisions[deedId].isActive, "Subdivision not active");
+        require(unitId < subdivisions[deedId].totalUnits, "Invalid unit ID");
+        
+        subdivisions[deedId].unitMetadata[unitId] = metadata;
+        emit UnitMetadataUpdated(deedId, unitId, metadata);
     }
 
     // ============ Minting Functions ============
@@ -455,5 +488,27 @@ contract Subdivide is
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
+    }
+
+    /**
+     * @notice Transfers collection admin rights to a new address
+     * @param deedId ID of the DeedNFT
+     * @param newAdmin Address of the new admin
+     */
+    function transferCollectionAdmin(uint256 deedId, address newAdmin) external {
+        require(subdivisions[deedId].collectionAdmin == msg.sender, "Not collection admin");
+        require(newAdmin != address(0), "Invalid admin address");
+        
+        address previousAdmin = subdivisions[deedId].collectionAdmin;
+        subdivisions[deedId].collectionAdmin = newAdmin;
+        emit CollectionAdminTransferred(deedId, previousAdmin, newAdmin);
+    }
+
+    /**
+     * @notice Modifier to restrict access to collection admin
+     */
+    modifier onlyCollectionAdmin(uint256 deedId) {
+        require(subdivisions[deedId].collectionAdmin == msg.sender, "Not collection admin");
+        _;
     }
 }
