@@ -664,3 +664,4 @@ contract Fractionalize is
         return (approvalVotes * 100) / totalVotes >= fraction.requiredApprovalPercentage;
     }
 }
+
