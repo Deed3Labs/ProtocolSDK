@@ -76,7 +76,7 @@ contract DeedNFT is
      * 
      * Land - Real estate land assets
      * Vehicle - Vehicular assets
-     * Estate - Buildings and Commercial properties
+     * Estate - Dwellings, Retail & Commercial Buildings
      * CommercialEquipment - Business and industrial equipment
      */
     enum AssetType {
