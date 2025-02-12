@@ -1,6 +1,6 @@
 # Protocol SDK - The Deed Protocol
 
-This repository contains the **Typescript SDK** for building frontend interfaces that interact with the Protocol Smart Contracts of **The Deed Protocol**. The SDK abstracts the complexities of direct blockchain interactions and provides a robust, easy-to-use interface for integrating decentralized real estate functionalities into your applications.
+This repository contains the **Typescript SDK** for building frontend interfaces that interact with the Smart Contracts of **The Deed Protocol**. The SDK abstracts the complexities of direct blockchain interactions and provides a robust, easy-to-use interface for integrating decentralized real estate functionalities into your applications.
 
 ## Overview
 
