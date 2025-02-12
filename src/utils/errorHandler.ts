@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import { ERROR_CODES } from './constants';
+import { ERROR_CODES } from '../config/constants';
 import { ProtocolError } from './errors';
 
 interface RetryConfig {
