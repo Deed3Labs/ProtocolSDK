@@ -1,3 +1,6 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 export * from './ProtocolSDK';
 export * from './contracts';
 export * from './types';

@@ -12,7 +12,7 @@ export class WalletManager {
 
   private async initializeDynamic() {
     this.dynamic = new DynamicWallet({
-      environmentId: 'YOUR_DYNAMIC_ENV_ID',
+      environmentId: process.env.DYNAMIC_ENV_ID,
       walletConnectors: ['metamask', 'walletconnect']
     });
   }
@@ -39,7 +39,7 @@ export class WalletManager {
 
   private async connectWalletConnect() {
     const walletConnect = new WalletConnect({
-      infuraId: 'YOUR_INFURA_ID'
+      infuraId: process.env.INFURA_ID
     });
     await walletConnect.enable();
     this.provider = new ethers.providers.Web3Provider(walletConnect);
