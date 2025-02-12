@@ -11,7 +11,7 @@ The Protocol SDK is designed to simplify the development of user interfaces that
 - **Handle Events:** Easily subscribe to and process blockchain events, ensuring your frontend remains synchronized with on-chain activities.
 - **Integrate Wallets:** Use familiar wallet providers to sign transactions and authenticate users.
 
-For full context on the underlying smart contracts, refer to the [Protocol Smart Contracts repository](https://github.com/Deed3Labs/Protocol-Contracts/tree/contract-changes).
+For full context on the underlying smart contracts, refer to the [Protocol Smart Contracts repository](https://github.com/Deed3Labs/Protocol-Contracts/).
 
 ## Key Components
 
