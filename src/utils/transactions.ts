@@ -1,6 +1,8 @@
 import { ethers } from 'ethers';
 import { TransactionResponse, TransactionReceipt } from '@ethersproject/abstract-provider';
 import { SDKError, ERROR_CODES } from './errors';
+import { TransactionQueue } from './transactionQueue';
+import { ErrorHandler } from './errors';
 
 export interface TransactionOptions {
   gasLimit?: ethers.BigNumber;
@@ -39,7 +41,31 @@ export interface TransactionEventCallbacks {
 }
 
 export class TransactionManager {
-  constructor(private provider: ethers.providers.Provider) {}
+  private queue: TransactionQueue;
+  private errorHandler: ErrorHandler;
+
+  constructor(
+    private provider: ethers.providers.Provider,
+    errorHandler?: ErrorHandler
+  ) {
+    this.queue = new TransactionQueue();
+    this.errorHandler = errorHandler || new ErrorHandler(provider);
+  }
+
+  async sendTransaction(
+    tx: ethers.providers.TransactionRequest,
+    options?: TransactionOptions
+  ): Promise<ethers.providers.TransactionResponse> {
+    return this.queue.add(async () => {
+      try {
+        const signer = this.provider.getSigner();
+        const response = await signer.sendTransaction(tx);
+        return response;
+      } catch (error) {
+        throw await this.errorHandler.handleError(error);
+      }
+    });
+  }
 
   async monitorTransaction(
     tx: ethers.ContractTransaction,

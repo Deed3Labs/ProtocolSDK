@@ -115,6 +115,8 @@ export const NETWORKS: Record<number, NetworkConfig> = {
   // Add other testnets similarly...
 };
 
+export const DEFAULT_NETWORK = SUPPORTED_CHAINS.MAINNET;
+
 export async function validateNetwork(
   provider: ethers.providers.Provider,
   expectedChainId: number

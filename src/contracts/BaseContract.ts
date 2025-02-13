@@ -4,29 +4,35 @@ import { SDKError, ERROR_CODES } from '../utils/errors';
 import { NetworkConfig } from '../types/config';
 import { TransactionManager, TransactionOptions } from '../utils/transactions';
 import { ErrorHandler } from '../utils/errorHandler';
+import { RetryConfig } from '../utils/retry';
+import { withRetry } from '../utils/retry';
 
 export abstract class BaseContract {
   protected contract: ethers.Contract;
-  protected provider: ethers.providers.Web3Provider;
-  protected network: NetworkConfig;
-  protected txManager: TransactionManager;
+  protected provider: ethers.providers.Provider;
   protected errorHandler: ErrorHandler;
+  protected txManager: TransactionManager;
+  protected network: NetworkConfig;
 
   constructor(
     address: string,
     abi: ethers.ContractInterface,
-    provider: ethers.providers.Web3Provider,
-    network: NetworkConfig
+    config: {
+      provider: ethers.providers.Provider;
+      network: NetworkConfig;
+      errorHandler: ErrorHandler;
+      txManager: TransactionManager;
+    }
   ) {
+    this.provider = config.provider;
+    this.network = config.network;
+    this.errorHandler = config.errorHandler;
+    this.txManager = config.txManager;
     if (!address || !ethers.utils.isAddress(address)) {
       throw new SDKError('Invalid contract address', ERROR_CODES.CONTRACT_NOT_FOUND);
     }
     
-    this.provider = provider;
-    this.contract = new ethers.Contract(address, abi, provider);
-    this.network = network;
-    this.txManager = new TransactionManager(this.provider);
-    this.errorHandler = new ErrorHandler();
+    this.contract = new ethers.Contract(address, abi, this.provider);
   }
 
   protected async handleTransaction(
@@ -71,16 +77,13 @@ export abstract class BaseContract {
 
   protected async waitForTransaction(
     tx: TransactionResponse,
-    confirmations: number = 1
+    confirmations: number = 1,
+    options?: TransactionOptions
   ): Promise<TransactionReceipt> {
-    try {
-      return await tx.wait(confirmations);
-    } catch (error: any) {
-      throw new SDKError(
-        `Transaction failed: ${error.message}`,
-        ERROR_CODES.TRANSACTION_FAILED
-      );
-    }
+    return withRetry(
+      () => tx.wait(confirmations),
+      options?.retryConfig
+    );
   }
 
   protected async estimateAndSendTransaction(

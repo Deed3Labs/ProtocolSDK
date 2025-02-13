@@ -45,4 +45,15 @@ export interface ContractEventTypes {
   SubdivisionCreated: (deedId: number, name: string) => void;
   FractionCreated: (fractionId: number, assetType: number) => void;
   ValidatorRegistered: (validator: string, name: string) => void;
-} 
+}
+
+export interface EventConfig {
+  fromBlock?: number;
+  toBlock?: number | 'latest';
+  filter?: Record<string, any>;
+}
+
+export type EventCallback = (
+  event: ethers.Event,
+  handler: (error: Error | null, result?: any) => void
+) => void; 

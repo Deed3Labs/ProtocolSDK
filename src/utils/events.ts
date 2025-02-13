@@ -1,5 +1,6 @@
 import { ethers } from 'ethers';
 import { DeedNFTEvents, SubdivideEvents, FractionalizeEvents } from '../types/events';
+import { EventEmitter } from 'events';
 
 export class EventManager {
   private contracts: {
@@ -42,5 +43,11 @@ export class EventManager {
       this.contracts[contract as keyof typeof this.contracts].off(event, listener);
     });
     this.listeners.clear();
+  }
+}
+
+export class SDKEventEmitter extends EventEmitter {
+  emit(event: string, ...args: any[]): boolean {
+    return super.emit(event, ...args);
   }
 } 

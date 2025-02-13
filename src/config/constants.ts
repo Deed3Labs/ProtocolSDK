@@ -1,3 +1,5 @@
+export const SDK_VERSION = '0.1.0';
+
 export const SUPPORTED_CHAINS = {
   // Mainnets
   MAINNET: 1,
@@ -21,6 +23,7 @@ export const SUPPORTED_CHAINS = {
 } as const;
 
 export const DEFAULT_GAS_LIMIT = 500000;
+export const DEFAULT_TIMEOUT = 60000;
 export const DEFAULT_CONFIRMATIONS = 1;
 export const GAS_PRICE_INCREASE_FACTOR = 1.2;
 

@@ -13,4 +13,18 @@ export class SDKError extends Error {
   ) {
     super(message);
   }
+}
+
+export enum ERROR_CODES {
+  INVALID_CONFIG = 'INVALID_CONFIG',
+  INVALID_NETWORK = 'INVALID_NETWORK',
+  NETWORK_SWITCH_FAILED = 'NETWORK_SWITCH_FAILED',
+  CONTRACT_CALL_FAILED = 'CONTRACT_CALL_FAILED',
+  TRANSACTION_FAILED = 'TRANSACTION_FAILED'
+}
+
+export interface SDKErrorDetails {
+  code: ERROR_CODES;
+  message: string;
+  details?: Record<string, any>;
 } 

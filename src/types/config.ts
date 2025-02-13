@@ -28,12 +28,11 @@ export interface IPFSConfig {
   gateway: string;
 }
 
-export interface SDKConfig extends BaseConfig {
-  ipfs?: IPFSConfig;
-  defaultGasLimit?: number;
-  defaultConfirmations?: number;
-  metadata?: {
-    baseURI: string;
-    defaultTokenURI: string;
-  };
+export interface SDKConfig {
+  provider: ethers.providers.Provider;
+  network: NetworkConfig;
+  contracts: ContractAddresses;
+  walletConfig?: WalletConfig;
+  autoSwitchNetwork?: boolean;
+  defaultChainId?: number;
 } 

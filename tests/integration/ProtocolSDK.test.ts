@@ -1,5 +1,6 @@
 import { ProtocolSDK } from '../../src/ProtocolSDK';
-import { NETWORK_CONFIGS } from '../../src/utils/constants';
+import { SUPPORTED_CHAINS } from '../../src/config/constants';
+import { NETWORKS } from '../../src/config/networks';
 
 describe('ProtocolSDK Integration', () => {
   let sdk: ProtocolSDK;
@@ -7,7 +8,11 @@ describe('ProtocolSDK Integration', () => {
   beforeEach(async () => {
     sdk = await ProtocolSDK.create({
       provider: mockProvider,
-      network: NETWORK_CONFIGS.TESTNET
+      network: NETWORKS[SUPPORTED_CHAINS.LOCALHOST],
+      walletConfig: {
+        dynamicEnvId: 'test-env-id',
+        infuraId: 'test-infura-id'
+      }
     });
   });
 
@@ -18,6 +23,14 @@ describe('ProtocolSDK Integration', () => {
 
     it('should handle validator registration and validation', async () => {
       // Test validator flow
+    });
+  });
+
+  describe('Network Management', () => {
+    it('should switch networks correctly', async () => {
+      await sdk.wallet.switchNetwork(SUPPORTED_CHAINS.POLYGON_MUMBAI);
+      const network = await sdk.wallet.getNetwork();
+      expect(network.chainId).toBe(SUPPORTED_CHAINS.POLYGON_MUMBAI);
     });
   });
 }); 

@@ -1,9 +1,12 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+export const SDK_VERSION = '0.1.0';
 export * from './ProtocolSDK';
-export * from './contracts';
 export * from './types';
+export * from './config/networks';
+export * from './utils/errors';
+export * from './contracts';
 export * from './utils';
 export * from './hooks';
 export * from './types/config';
