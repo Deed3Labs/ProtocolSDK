@@ -14,6 +14,7 @@ import { TransactionQueue } from './utils/transactionQueue';
 import { SDKConfig, NetworkConfig } from './types/config';
 import { SDKError, ERROR_CODES } from './utils/errors';
 
+export const SDK_VERSION = '0.1.0';
 export * from './types';
 export * from './contracts';
 export * from './utils/wallet';
@@ -40,27 +41,22 @@ export class ProtocolSDK {
   constructor(config: SDKConfig) {
     this.validateConfig(config);
     
-    // Initialize provider and network
     this.provider = config.provider;
     this.network = config.network;
 
-    // Initialize utility managers
     this.wallet = new WalletManager(config.walletConfig);
     this.transactions = new TransactionManager(this.provider);
     this.errorHandler = new ErrorHandler(this.provider);
     this.txQueue = new TransactionQueue();
 
-    // Initialize contracts
     this.initializeContracts(config.contracts);
 
-    // Initialize event manager with contracts
     this.events = new EventManager({
       deedNFT: this.deedNFT.contract,
       subdivide: this.subdivide.contract,
       fractionalize: this.fractionalize.contract
     });
 
-    // Setup network monitoring
     this.setupNetworkMonitoring();
   }
 
@@ -71,9 +67,6 @@ export class ProtocolSDK {
     if (!config.network) {
       throw new SDKError('Network configuration is required', ERROR_CODES.INVALID_CONFIG);
     }
-    if (!config.contracts) {
-      throw new SDKError('Contract addresses are required', ERROR_CODES.INVALID_CONFIG);
-    }
   }
 
   private initializeContracts(addresses: SDKConfig['contracts']) {
@@ -81,15 +74,20 @@ export class ProtocolSDK {
       provider: this.provider,
       network: this.network,
       errorHandler: this.errorHandler,
-      txQueue: this.txQueue,
-      transactions: this.transactions
+      txManager: this.transactions
     };
 
-    this.deedNFT = new DeedNFTContract(addresses.deedNFT, contractConfig);
-    this.subdivide = new SubdivideContract(addresses.subdivide, contractConfig);
-    this.fractionalize = new FractionalizeContract(addresses.fractionalize, contractConfig);
-    this.validatorRegistry = new ValidatorRegistryContract(addresses.validatorRegistry, contractConfig);
-    this.fundManager = new FundManagerContract(addresses.fundManager, contractConfig);
+    const contracts = {
+      deedNFT: DeedNFTContract,
+      subdivide: SubdivideContract,
+      fractionalize: FractionalizeContract,
+      validatorRegistry: ValidatorRegistryContract,
+      fundManager: FundManagerContract
+    };
+
+    Object.entries(contracts).forEach(([key, Contract]) => {
+      this[key] = new Contract(addresses[key], contractConfig);
+    });
   }
 
   private setupNetworkMonitoring() {
@@ -116,8 +114,13 @@ export class ProtocolSDK {
 
   // Public utility methods
   async isValidNetwork(): Promise<boolean> {
-    const network = await this.provider.getNetwork();
-    return network.chainId === this.network.chainId;
+    try {
+      const currentNetwork = await this.wallet.getNetwork();
+      return currentNetwork.chainId === this.network.chainId;
+    } catch (error) {
+      this.errorHandler.handleError(error);
+      return false;
+    }
   }
 
   async getGasPrice(): Promise<providers.BigNumber> {
@@ -137,37 +140,39 @@ export class ProtocolSDK {
     }
   }
 
-  async init() {
+  private async init() {
     if (this.initialized) return;
-    
-    // Verify network and contracts
-    await this.validateConfig(this.config);
-    
-    // Initialize contracts
-    await this.initializeContracts();
-    
+    await this.validateNetwork();
     this.initialized = true;
   }
 
   static async create(config: SDKConfig): Promise<ProtocolSDK> {
     const sdk = new ProtocolSDK(config);
+    
+    const isValid = await sdk.isValidNetwork();
+    if (!isValid) {
+      throw new SDKError(
+        'Invalid network',
+        ERROR_CODES.INVALID_NETWORK,
+        { expected: config.network.chainId }
+      );
+    }
+    
     await sdk.init();
     return sdk;
   }
-}
 
-// Export a factory function for easier initialization
-export async function createProtocolSDK(config: SDKConfig): Promise<ProtocolSDK> {
-  const sdk = new ProtocolSDK(config);
-  const isValid = await sdk.isValidNetwork();
-  
-  if (!isValid) {
-    throw new SDKError(
-      'Invalid network',
-      ERROR_CODES.INVALID_NETWORK,
-      { expected: config.network.chainId }
-    );
+  private async validateNetwork() {
+    const currentNetwork = await this.wallet.getNetwork();
+    if (currentNetwork.chainId !== this.network.chainId) {
+      try {
+        await this.wallet.switchNetwork(this.network.chainId);
+      } catch (error) {
+        throw new SDKError(
+          'Failed to switch to correct network',
+          ERROR_CODES.NETWORK_SWITCH_FAILED
+        );
+      }
+    }
   }
-  
-  return sdk;
 }

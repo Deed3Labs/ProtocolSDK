@@ -1,3 +1,23 @@
+import { ethers } from 'ethers';
+
+export enum ErrorType {
+  CONTRACT_ERROR = 'CONTRACT_ERROR',
+  VALIDATION_ERROR = 'VALIDATION_ERROR',
+  NETWORK_ERROR = 'NETWORK_ERROR',
+  TRANSACTION_ERROR = 'TRANSACTION_ERROR'
+}
+
+export class SDKError extends Error {
+  constructor(
+    message: string,
+    public code: ERROR_CODES,
+    public details?: Record<string, any>
+  ) {
+    super(message);
+    this.name = 'SDKError';
+  }
+}
+
 export enum ErrorType {
   WALLET_CONNECTION = 'WALLET_CONNECTION',
   CONTRACT_INTERACTION = 'CONTRACT_INTERACTION',
@@ -43,18 +63,43 @@ export class ProtocolError extends Error {
 }
 
 export const ERROR_CODES = {
+  // Configuration Errors
+  INVALID_CONFIG: 'INVALID_CONFIG',
   INVALID_PROVIDER: 'INVALID_PROVIDER',
+  
+  // Network Errors
+  INVALID_NETWORK: 'INVALID_NETWORK',
+  NETWORK_SWITCH_FAILED: 'NETWORK_SWITCH_FAILED',
+  UNSUPPORTED_NETWORK: 'UNSUPPORTED_NETWORK',
+  
+  // Contract Errors
   CONTRACT_NOT_FOUND: 'CONTRACT_NOT_FOUND',
   TRANSACTION_FAILED: 'TRANSACTION_FAILED',
+  GAS_ESTIMATION_FAILED: 'GAS_ESTIMATION_FAILED',
+  
+  // Authorization Errors
   UNAUTHORIZED: 'UNAUTHORIZED',
-  INVALID_PARAMETERS: 'INVALID_PARAMETERS',
-  DEED_NOT_FOUND: 'DEED_NOT_FOUND',
-  INVALID_ASSET_TYPE: 'INVALID_ASSET_TYPE',
-  VALIDATION_FAILED: 'VALIDATION_FAILED',
   INSUFFICIENT_PERMISSIONS: 'INSUFFICIENT_PERMISSIONS',
+  
+  // Validation Errors
+  VALIDATION_FAILED: 'VALIDATION_FAILED',
+  INVALID_PARAMETERS: 'INVALID_PARAMETERS',
+  
+  // Asset Errors
+  DEED_NOT_FOUND: 'DEED_NOT_FOUND',
   FRACTION_NOT_FOUND: 'FRACTION_NOT_FOUND',
-  INVALID_NETWORK: 'INVALID_NETWORK',
-  GAS_ESTIMATION_FAILED: 'GAS_ESTIMATION_FAILED'
+  INVALID_ASSET_TYPE: 'INVALID_ASSET_TYPE',
+  CONTRACT_ERROR: 'CONTRACT_ERROR',
+  UNKNOWN_ERROR: 'UNKNOWN_ERROR'
+} as const;
+
+export const ERROR_MESSAGES = {
+  [ERROR_CODES.INVALID_PROVIDER]: 'Invalid provider configuration',
+  [ERROR_CODES.CONTRACT_NOT_FOUND]: 'Contract not found at address',
+  [ERROR_CODES.UNAUTHORIZED]: 'Unauthorized operation',
+  [ERROR_CODES.VALIDATION_FAILED]: 'Validation failed',
+  [ERROR_CODES.NETWORK_SWITCH_FAILED]: 'Failed to switch to the requested network',
+  [ERROR_CODES.UNSUPPORTED_NETWORK]: 'Network not supported by the SDK'
 } as const;
 
 export enum ContractErrorType {
@@ -75,13 +120,35 @@ export class ContractError extends Error {
   }
 }
 
-export class SDKError extends Error {
-  code: string;
-  details?: any;
+export class ErrorHandler {
+  constructor(private provider?: ethers.providers.Provider) {}
 
-  constructor(message: string, code: string, details?: any) {
-    super(message);
-    this.code = code;
-    this.details = details;
+  async handleError(error: any): Promise<SDKError> {
+    if (error instanceof SDKError) return error;
+    
+    // Handle provider errors
+    if (error.code && typeof error.code === 'string') {
+      return new SDKError(
+        error.message || ERROR_MESSAGES[error.code] || 'Unknown provider error',
+        error.code,
+        error.details
+      );
+    }
+
+    // Handle contract errors
+    if (error.reason) {
+      return new SDKError(
+        error.reason,
+        ERROR_CODES.CONTRACT_ERROR,
+        ErrorType.CONTRACT_ERROR,
+        { originalError: error }
+      );
+    }
+
+    return new SDKError(
+      error.message || 'Unknown error',
+      ERROR_CODES.UNKNOWN_ERROR,
+      ErrorType.UNKNOWN_ERROR
+    );
   }
 } 

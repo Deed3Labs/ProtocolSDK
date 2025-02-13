@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
+import { ethers } from 'ethers';
 import { ProtocolSDK } from '../ProtocolSDK';
-import { NetworkConfig } from '../types/config';
-import { NETWORKS } from '../utils/config/networks';
+import { NETWORKS } from '../config/networks';
+import { SUPPORTED_CHAINS } from '../config/constants';
 
-export function useProtocolSDK(networkName: string = 'localhost') {
+export function useProtocolSDK(chainId: number = SUPPORTED_CHAINS.LOCALHOST) {
   const [sdk, setSDK] = useState<ProtocolSDK | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -11,19 +12,19 @@ export function useProtocolSDK(networkName: string = 'localhost') {
   useEffect(() => {
     async function initSDK() {
       try {
-        const network = NETWORKS[networkName];
-        if (!network) throw new Error(`Network ${networkName} not configured`);
+        const network = NETWORKS[chainId];
+        if (!network) throw new Error(`Network ${chainId} not configured`);
 
-        // Initialize SDK
         const provider = window.ethereum 
           ? new ethers.providers.Web3Provider(window.ethereum)
-          : ethers.providers.getDefaultProvider(network.rpcUrl);
+          : new ethers.providers.JsonRpcProvider(network.rpcUrl);
         
         const sdk = await ProtocolSDK.create({
           provider,
           network,
           walletConfig: {
-            dynamicEnvId: process.env.DYNAMIC_ENV_ID
+            dynamicEnvId: process.env.DYNAMIC_ENV_ID,
+            infuraId: process.env.INFURA_ID
           }
         });
 
@@ -36,7 +37,7 @@ export function useProtocolSDK(networkName: string = 'localhost') {
     }
 
     initSDK();
-  }, [networkName]);
+  }, [chainId]);
 
   return { sdk, loading, error };
 } 

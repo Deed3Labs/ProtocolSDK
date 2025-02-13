@@ -12,7 +12,7 @@ export class WalletManager {
 
   private async initializeDynamic() {
     this.dynamic = new DynamicWallet({
-      environmentId: 'YOUR_DYNAMIC_ENV_ID',
+      environmentId: process.env.DYNAMIC_ENV_ID,
       walletConnectors: ['metamask', 'walletconnect']
     });
   }
@@ -39,7 +39,7 @@ export class WalletManager {
 
   private async connectWalletConnect() {
     const walletConnect = new WalletConnect({
-      infuraId: 'YOUR_INFURA_ID'
+      infuraId: process.env.INFURA_ID
     });
     await walletConnect.enable();
     this.provider = new ethers.providers.Web3Provider(walletConnect);
@@ -60,5 +60,30 @@ export class WalletManager {
       await this.connectWallet('metamask');
     }
     return this.provider!.getSigner();
+  }
+
+  async switchNetwork(chainId: number) {
+    if (!this.provider) {
+      throw new Error('No provider initialized');
+    }
+
+    try {
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: `0x${chainId.toString(16)}` }],
+      });
+    } catch (error: any) {
+      if (error.code === 4902) {
+        throw new Error('Network not added to wallet');
+      }
+      throw new Error('Failed to switch network');
+    }
+  }
+
+  async getNetwork() {
+    if (!this.provider) {
+      throw new Error('No provider initialized');
+    }
+    return this.provider.getNetwork();
   }
 } 

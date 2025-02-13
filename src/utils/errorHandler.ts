@@ -1,6 +1,8 @@
 import { ethers } from 'ethers';
-import { ERROR_CODES } from './constants';
+import { ERROR_CODES } from '../config/constants';
 import { ProtocolError } from './errors';
+import { providers } from 'ethers';
+import { SDKErrorDetails } from '../types/errors';
 
 interface RetryConfig {
   maxAttempts: number;
@@ -18,43 +20,21 @@ export enum ErrorType {
 }
 
 export class ErrorHandler {
-  constructor(private provider: ethers.providers.Provider) {}
+  constructor(private provider: providers.Provider) {}
 
-  async handleError(error: any, context: { 
-    method?: string; 
-    params?: any; 
-    contractAddress?: string 
-  }) {
-    // Handle provider errors
-    if (error.code && error.code in ERROR_CODES) {
-      throw new ProtocolError(error.code, error.message, context);
+  handleError(error: any): SDKErrorDetails {
+    // Handle different error types
+    if (error.code === 'NETWORK_ERROR') {
+      return {
+        code: ERROR_CODES.INVALID_NETWORK,
+        message: 'Network connection failed'
+      };
     }
-
-    // Handle contract errors
-    if (error.reason) {
-      throw new ProtocolError(
-        ERROR_CODES.CONTRACT_ERROR,
-        error.reason,
-        context
-      );
-    }
-
-    // Handle transaction errors
-    if (error.transaction) {
-      const receipt = await this.provider.getTransactionReceipt(error.transactionHash);
-      throw new ProtocolError(
-        ERROR_CODES.TRANSACTION_FAILED,
-        error.message,
-        { ...context, receipt }
-      );
-    }
-
-    // Default error
-    throw new ProtocolError(
-      ERROR_CODES.UNKNOWN_ERROR,
-      error.message || 'Unknown error occurred',
-      context
-    );
+    // Add more error handling logic
+    return {
+      code: ERROR_CODES.CONTRACT_CALL_FAILED,
+      message: error.message || 'Unknown error occurred'
+    };
   }
 
   async retryWithBackoff<T>(
