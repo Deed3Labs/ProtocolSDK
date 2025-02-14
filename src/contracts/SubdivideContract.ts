@@ -1,8 +1,22 @@
-import { BaseContract } from './BaseContract';
-import { SubdivisionInfo } from '../types';
-import { SubdivideABI } from '../abis';
+import { 
+  type PublicClient, 
+  type WalletClient,
+  type Address,
+  type Hash
+} from 'viem'
+import { BaseContract } from './BaseContract'
+import { SubdivideABI } from '../abis'
+import { SubdivisionInfo } from '../types'
 
 export class SubdivideContract extends BaseContract {
+  constructor(
+    publicClient: PublicClient,
+    walletClient: WalletClient,
+    address: Address
+  ) {
+    super(publicClient, walletClient, address, SubdivideABI)
+  }
+
   // Reference Subdivide.sol lines 219-247
   async createSubdivision(params: {
     deedId: number;
@@ -72,5 +86,13 @@ export class SubdivideContract extends BaseContract {
       description: params.description || '',
       burnable: true
     });
+  }
+
+  async subdivide(tokenId: bigint, parts: bigint): Promise<{ hash: Hash }> {
+    return this.executeTransaction('subdivide', [tokenId, parts])
+  }
+
+  async getSubdivisions(tokenId: bigint): Promise<bigint[]> {
+    return this.executeCall('getSubdivisions', [tokenId])
   }
 } 

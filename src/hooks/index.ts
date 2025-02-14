@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { type Address } from 'viem';
 import { ProtocolSDK } from '../ProtocolSDK';
 import { AssetType, DeedInfo, SubdivisionInfo } from '../types';
 
@@ -24,8 +25,8 @@ export function useDeedNFT(sdk: ProtocolSDK) {
     setLoading(true);
     try {
       const nextId = await sdk.deedNFT.nextDeedId();
-      const deedPromises = Array.from({ length: nextId }, (_, i) => 
-        sdk.deedNFT.getDeedInfo(i).catch(() => null)
+      const deedPromises = Array.from({ length: Number(nextId) }, (_, i) => 
+        sdk.deedNFT.getDeedInfo(BigInt(i)).catch(() => null)
       );
       const deedInfos = await Promise.all(deedPromises);
       setDeeds(deedInfos.filter(Boolean));

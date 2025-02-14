@@ -1,24 +1,24 @@
-import { ethers } from 'ethers';
+import { type PublicClient, type WalletClient, type Address } from 'viem';
 
 export interface ContractAddresses {
-  deedNFT: string;
-  subdivide: string;
-  fractionalize: string;
-  validatorRegistry: string;
-  fundManager: string;
+  deedNFT: Address;
+  subdivide: Address;
+  fractionalize: Address;
+  validatorRegistry: Address;
+  fundManager: Address;
 }
 
 export interface NetworkConfig {
-  chainId: number;
   name: string;
+  chainId: number;
   rpcUrl: string;
   contracts: ContractAddresses;
 }
 
 export interface WalletConfig {
-  dynamicEnvId?: string;
-  infuraId?: string;
-  defaultProvider?: ethers.providers.JsonRpcProvider;
+  walletConnectProjectId?: string;
+  fallbackRpcUrl?: string;
+  supportedChainIds?: number[];
 }
 
 export interface IPFSConfig {
@@ -29,10 +29,7 @@ export interface IPFSConfig {
 }
 
 export interface SDKConfig {
-  provider: ethers.providers.Provider;
+  publicClient: PublicClient;
   network: NetworkConfig;
-  contracts: ContractAddresses;
   walletConfig?: WalletConfig;
-  autoSwitchNetwork?: boolean;
-  defaultChainId?: number;
 } 

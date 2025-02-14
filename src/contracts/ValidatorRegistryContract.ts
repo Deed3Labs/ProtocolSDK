@@ -1,8 +1,22 @@
+import { 
+  type PublicClient, 
+  type WalletClient,
+  type Address,
+  type Hash
+} from 'viem'
 import { BaseContract } from './BaseContract';
 import { ValidatorInfo, AssetType } from '../types';
 import { ValidatorRegistryABI } from '../abis';
 
 export class ValidatorRegistryContract extends BaseContract {
+  constructor(
+    publicClient: PublicClient,
+    walletClient: WalletClient,
+    address: Address
+  ) {
+    super(publicClient, walletClient, address, ValidatorRegistryABI);
+  }
+
   async registerValidator(params: {
     name: string;
     description: string;

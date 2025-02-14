@@ -1,3 +1,5 @@
+import { ErrorType } from '../utils/errors'
+
 export enum SDKErrorType {
   CONTRACT_ERROR = 'CONTRACT_ERROR',
   VALIDATION_ERROR = 'VALIDATION_ERROR',
@@ -24,7 +26,12 @@ export enum ERROR_CODES {
 }
 
 export interface SDKErrorDetails {
-  code: ERROR_CODES;
-  message: string;
-  details?: Record<string, any>;
+  type: ErrorType
+  message: string
+  originalError?: unknown
+}
+
+export interface TransactionError extends SDKErrorDetails {
+  hash?: string
+  receipt?: unknown
 } 

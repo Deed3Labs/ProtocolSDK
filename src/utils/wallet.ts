@@ -1,89 +1,94 @@
-import { ethers } from 'ethers';
-import { DynamicWallet } from '@dynamic-labs/sdk';
-import WalletConnect from '@walletconnect/web3-provider';
+import { createWeb3Modal } from '@reown/appkit-wagmi-react-native'
+import { createAuthClient } from '@reown/appkit-auth-wagmi-react-native'
+import { createCoinbaseConnector } from '@reown/appkit-coinbase-wagmi-react-native'
+import { createSiweClient } from '@reown/appkit-siwe-react-native'
+import { type PublicClient, type WalletClient, createPublicClient, http } from 'viem'
+import { ProtocolError, ErrorType } from './errors'
+import type { WalletConfig } from '../types/config'
 
 export class WalletManager {
-  private provider: ethers.providers.Web3Provider | null = null;
-  private dynamic: DynamicWallet | null = null;
-  
-  constructor() {
-    this.initializeDynamic();
+  private publicClient: PublicClient | null = null
+  private modal: any | null = null
+  private walletClient: WalletClient | null = null
+  private authClient: any | null = null
+  private siweClient: any | null = null
+
+  constructor(private config: WalletConfig = {}) {
+    this.initializeWeb3Modal()
   }
 
-  private async initializeDynamic() {
-    this.dynamic = new DynamicWallet({
-      environmentId: process.env.DYNAMIC_ENV_ID,
-      walletConnectors: ['metamask', 'walletconnect']
-    });
-  }
-
-  async connectWallet(walletType: 'metamask' | 'walletconnect' | 'dynamic') {
-    switch(walletType) {
-      case 'metamask':
-        return this.connectMetaMask();
-      case 'walletconnect':
-        return this.connectWalletConnect();
-      case 'dynamic':
-        return this.connectDynamic();
-    }
-  }
-
-  private async connectMetaMask() {
-    if (typeof window.ethereum !== 'undefined') {
-      await window.ethereum.request({ method: 'eth_requestAccounts' });
-      this.provider = new ethers.providers.Web3Provider(window.ethereum);
-      return this.provider;
-    }
-    throw new Error('MetaMask not installed');
-  }
-
-  private async connectWalletConnect() {
-    const walletConnect = new WalletConnect({
-      infuraId: process.env.INFURA_ID
-    });
-    await walletConnect.enable();
-    this.provider = new ethers.providers.Web3Provider(walletConnect);
-    return this.provider;
-  }
-
-  private async connectDynamic() {
-    const connection = await this.dynamic?.connect();
-    if (connection) {
-      this.provider = new ethers.providers.Web3Provider(connection);
-      return this.provider;
-    }
-    throw new Error('Dynamic connection failed');
-  }
-
-  async getSigner() {
-    if (!this.provider) {
-      await this.connectWallet('metamask');
-    }
-    return this.provider!.getSigner();
-  }
-
-  async switchNetwork(chainId: number) {
-    if (!this.provider) {
-      throw new Error('No provider initialized');
+  private initializeWeb3Modal() {
+    const projectId = this.config.walletConnectProjectId
+    if (!projectId) {
+      throw new ProtocolError(
+        ErrorType.WALLET_CONNECTION,
+        'WalletConnect project ID is required'
+      )
     }
 
+    this.authClient = createAuthClient({
+      projectId,
+      chains: this.config.supportedChainIds || [1]
+    })
+
+    this.siweClient = createSiweClient({
+      authClient: this.authClient
+    })
+
+    const coinbaseConnector = createCoinbaseConnector()
+
+    this.modal = createWeb3Modal({
+      projectId,
+      chains: this.config.supportedChainIds || [1],
+      connectors: [coinbaseConnector],
+      authClient: this.authClient,
+      siweClient: this.siweClient
+    })
+  }
+
+  async connect(): Promise<{ publicClient: PublicClient; walletClient: WalletClient }> {
     try {
-      await window.ethereum.request({
-        method: 'wallet_switchEthereumChain',
-        params: [{ chainId: `0x${chainId.toString(16)}` }],
-      });
-    } catch (error: any) {
-      if (error.code === 4902) {
-        throw new Error('Network not added to wallet');
+      if (!this.publicClient || !this.walletClient) {
+        await this.modal.open()
+        const rpcUrl = this.config.fallbackRpcUrl || 'https://eth-mainnet.g.alchemy.com/v2/'
+        this.publicClient = createPublicClient({
+          transport: http(rpcUrl)
+        })
+        this.walletClient = await this.modal.getWalletClient()
       }
-      throw new Error('Failed to switch network');
+      return {
+        publicClient: this.publicClient,
+        walletClient: this.walletClient
+      }
+    } catch (error) {
+      throw ProtocolError.fromError(error)
     }
   }
 
-  async getNetwork() {
-    if (!this.provider) {
-      throw new Error('No provider initialized');
+  async disconnect(): Promise<void> {
+    if (this.modal) {
+      await this.modal.disconnect()
+      this.publicClient = null
+      this.walletClient = null
     }
-    return this.provider.getNetwork();
+  }
+
+  async switchNetwork(chainId: number): Promise<void> {
+    try {
+      await this.modal.switchNetwork({ chainId })
+    } catch (error) {
+      throw ProtocolError.fromError(error)
+    }
+  }
+
+  getPublicClient(): PublicClient | null {
+    return this.publicClient
+  }
+
+  getClients(): { publicClient: PublicClient | null; walletClient: WalletClient | null } {
+    return {
+      publicClient: this.publicClient,
+      walletClient: this.walletClient
+    }
   }
 } 

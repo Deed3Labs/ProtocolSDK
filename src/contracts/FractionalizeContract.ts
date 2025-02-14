@@ -1,8 +1,22 @@
+import { 
+  type PublicClient, 
+  type WalletClient,
+  type Address,
+  type Hash
+} from 'viem'
 import { BaseContract } from './BaseContract';
 import { FractionInfo, FractionAssetType } from '../types';
 import { FractionalizeABI } from '../abis';
 
 export class FractionalizeContract extends BaseContract {
+  constructor(
+    publicClient: PublicClient,
+    walletClient: WalletClient,
+    address: Address
+  ) {
+    super(publicClient, walletClient, address, FractionalizeABI);
+  }
+
   async createFraction(params: {
     assetType: FractionAssetType;
     tokenId: number;
@@ -12,9 +26,9 @@ export class FractionalizeContract extends BaseContract {
     totalShares: number;
     maxSharesPerWallet: number;
   }) {
-    const signedContract = await this.getSignedContract();
-    return this.handleTransaction(
-      signedContract.createFraction(
+    return this.executeTransaction(
+      'createFraction',
+      [
         params.assetType,
         params.tokenId,
         params.name,
@@ -42,5 +56,17 @@ export class FractionalizeContract extends BaseContract {
     return this.handleTransaction(
       signedContract.proposeUnlock(fractionId)
     );
+  }
+
+  async mint(to: Address, tokenId: bigint): Promise<{ hash: Hash }> {
+    return this.executeTransaction('mint', [to, tokenId])
+  }
+
+  async tokenURI(tokenId: bigint): Promise<string> {
+    return this.executeCall('tokenURI', [tokenId])
+  }
+
+  async ownerOf(tokenId: bigint): Promise<Address> {
+    return this.executeCall('ownerOf', [tokenId])
   }
 } 

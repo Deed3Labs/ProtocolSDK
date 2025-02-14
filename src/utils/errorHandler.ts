@@ -1,8 +1,6 @@
-import { ethers } from 'ethers';
-import { ERROR_CODES } from '../config/constants';
-import { ProtocolError } from './errors';
-import { providers } from 'ethers';
-import { SDKErrorDetails } from '../types/errors';
+import { BaseError } from 'viem'
+import { ProtocolError, ErrorType, ERROR_CODES } from './errors'
+import { SDKErrorDetails } from '../types/errors'
 
 interface RetryConfig {
   maxAttempts: number;
@@ -22,47 +20,34 @@ export enum ErrorType {
 export class ErrorHandler {
   constructor(private provider: providers.Provider) {}
 
-  handleError(error: any): SDKErrorDetails {
-    // Handle different error types
-    if (error.code === 'NETWORK_ERROR') {
-      return {
-        code: ERROR_CODES.INVALID_NETWORK,
-        message: 'Network connection failed'
-      };
-    }
-    // Add more error handling logic
-    return {
-      code: ERROR_CODES.CONTRACT_CALL_FAILED,
-      message: error.message || 'Unknown error occurred'
-    };
+  handleError(error: unknown): ProtocolError {
+    return ProtocolError.fromError(error)
   }
 
-  async retryWithBackoff<T>(
+  async withRetry<T>(
     operation: () => Promise<T>,
     config: RetryConfig
   ): Promise<T> {
-    let lastError: Error;
-    let delay = config.initialDelay;
+    let lastError: Error | null = null
+    let delay = config.initialDelay
 
     for (let attempt = 1; attempt <= config.maxAttempts; attempt++) {
       try {
-        return await operation();
-      } catch (error: any) {
-        lastError = error;
+        return await operation()
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error))
         
-        if (attempt === config.maxAttempts) {
-          throw error;
-        }
-
-        await new Promise(resolve => setTimeout(resolve, delay));
+        if (attempt === config.maxAttempts) break
+        
+        await new Promise(resolve => setTimeout(resolve, delay))
         delay = Math.min(
           delay * (config.backoffFactor || 2),
           config.maxDelay || 30000
-        );
+        )
       }
     }
 
-    throw lastError!;
+    throw this.handleError(lastError)
   }
 
   private isNonceError(error: any): boolean {

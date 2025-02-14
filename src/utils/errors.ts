@@ -1,10 +1,16 @@
-import { ethers } from 'ethers';
+import { BaseError } from 'viem'
 
 export enum ErrorType {
   CONTRACT_ERROR = 'CONTRACT_ERROR',
   VALIDATION_ERROR = 'VALIDATION_ERROR',
   NETWORK_ERROR = 'NETWORK_ERROR',
-  TRANSACTION_ERROR = 'TRANSACTION_ERROR'
+  TRANSACTION_ERROR = 'TRANSACTION_ERROR',
+  WALLET_CONNECTION = 'WALLET_CONNECTION',
+  CONTRACT_INTERACTION = 'CONTRACT_INTERACTION',
+  TRANSACTION_FAILED = 'TRANSACTION_FAILED',
+  NETWORK_MISMATCH = 'NETWORK_MISMATCH',
+  INVALID_CONFIG = 'INVALID_CONFIG',
+  UNKNOWN_ERROR = 'UNKNOWN_ERROR'
 }
 
 export class SDKError extends Error {
@@ -18,80 +24,49 @@ export class SDKError extends Error {
   }
 }
 
-export enum ErrorType {
-  WALLET_CONNECTION = 'WALLET_CONNECTION',
-  CONTRACT_INTERACTION = 'CONTRACT_INTERACTION',
-  TRANSACTION = 'TRANSACTION',
-  NETWORK = 'NETWORK',
-  VALIDATION = 'VALIDATION'
-}
-
 export class ProtocolError extends Error {
-  type: ErrorType;
-  details?: any;
-
-  constructor(type: ErrorType, message: string, details?: any) {
-    super(message);
-    this.type = type;
-    this.details = details;
-    this.name = 'ProtocolError';
+  constructor(
+    public type: ErrorType,
+    message: string,
+    public originalError?: unknown
+  ) {
+    super(message)
+    this.name = 'ProtocolError'
   }
 
-  static fromError(error: any): ProtocolError {
-    if (error instanceof ProtocolError) return error;
-
-    // Handle common Web3 errors
-    if (error.code === 4001) {
-      return new ProtocolError(
-        ErrorType.WALLET_CONNECTION,
-        'User rejected the transaction'
-      );
+  static fromError(error: unknown): ProtocolError {
+    if (error instanceof ProtocolError) {
+      return error
     }
 
-    if (error.code === -32603) {
+    if (error instanceof BaseError) {
       return new ProtocolError(
-        ErrorType.TRANSACTION,
-        'Transaction failed. Please check your balance and gas settings'
-      );
+        ErrorType.CONTRACT_ERROR,
+        error.message,
+        error
+      )
     }
 
     return new ProtocolError(
-      ErrorType.CONTRACT_INTERACTION,
-      error.message || 'Unknown error occurred'
-    );
+      ErrorType.UNKNOWN_ERROR,
+        error instanceof Error ? error.message : 'Unknown error',
+        error
+    )
   }
 }
 
+// Export error codes for backward compatibility
 export const ERROR_CODES = {
-  // Configuration Errors
-  INVALID_CONFIG: 'INVALID_CONFIG',
-  INVALID_PROVIDER: 'INVALID_PROVIDER',
-  
-  // Network Errors
-  INVALID_NETWORK: 'INVALID_NETWORK',
-  NETWORK_SWITCH_FAILED: 'NETWORK_SWITCH_FAILED',
-  UNSUPPORTED_NETWORK: 'UNSUPPORTED_NETWORK',
-  
-  // Contract Errors
-  CONTRACT_NOT_FOUND: 'CONTRACT_NOT_FOUND',
-  TRANSACTION_FAILED: 'TRANSACTION_FAILED',
-  GAS_ESTIMATION_FAILED: 'GAS_ESTIMATION_FAILED',
-  
-  // Authorization Errors
-  UNAUTHORIZED: 'UNAUTHORIZED',
-  INSUFFICIENT_PERMISSIONS: 'INSUFFICIENT_PERMISSIONS',
-  
-  // Validation Errors
-  VALIDATION_FAILED: 'VALIDATION_FAILED',
-  INVALID_PARAMETERS: 'INVALID_PARAMETERS',
-  
-  // Asset Errors
-  DEED_NOT_FOUND: 'DEED_NOT_FOUND',
-  FRACTION_NOT_FOUND: 'FRACTION_NOT_FOUND',
-  INVALID_ASSET_TYPE: 'INVALID_ASSET_TYPE',
-  CONTRACT_ERROR: 'CONTRACT_ERROR',
-  UNKNOWN_ERROR: 'UNKNOWN_ERROR'
-} as const;
+  CONTRACT_ERROR: ErrorType.CONTRACT_ERROR,
+  VALIDATION_ERROR: ErrorType.VALIDATION_ERROR,
+  NETWORK_ERROR: ErrorType.NETWORK_ERROR,
+  TRANSACTION_ERROR: ErrorType.TRANSACTION_ERROR,
+  WALLET_CONNECTION: ErrorType.WALLET_CONNECTION,
+  CONTRACT_INTERACTION: ErrorType.CONTRACT_INTERACTION,
+  TRANSACTION_FAILED: ErrorType.TRANSACTION_FAILED,
+  NETWORK_MISMATCH: ErrorType.NETWORK_MISMATCH,
+  INVALID_CONFIG: ErrorType.INVALID_CONFIG
+} as const
 
 export const ERROR_MESSAGES = {
   [ERROR_CODES.INVALID_PROVIDER]: 'Invalid provider configuration',

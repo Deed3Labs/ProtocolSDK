@@ -4,11 +4,13 @@ import { ValidatorABI } from '../abis';
 
 export class ValidatorContract extends BaseContract implements IValidator {
   async tokenURI(tokenId: number): Promise<string> {
-    return await this.contract.tokenURI(tokenId);
+    const signedContract = await this.getSignedContract();
+    return await signedContract.tokenURI(tokenId);
   }
 
   async defaultOperatingAgreement(): Promise<string> {
-    return await this.contract.defaultOperatingAgreement();
+    const signedContract = await this.getSignedContract();
+    return await signedContract.defaultOperatingAgreement();
   }
 
   async operatingAgreementName(uri: string): Promise<string> {

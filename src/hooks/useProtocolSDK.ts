@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { ethers } from 'ethers';
+import { createPublicClient, http } from 'viem';
 import { ProtocolSDK } from '../ProtocolSDK';
 import { NETWORKS } from '../config/networks';
 import { SUPPORTED_CHAINS } from '../config/constants';
+import { ProtocolError } from '../utils/errors';
 
 export function useProtocolSDK(chainId: number = SUPPORTED_CHAINS.LOCALHOST) {
   const [sdk, setSDK] = useState<ProtocolSDK | null>(null);
@@ -10,33 +11,48 @@ export function useProtocolSDK(chainId: number = SUPPORTED_CHAINS.LOCALHOST) {
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
+    let mounted = true;
+    
     async function initSDK() {
       try {
         const network = NETWORKS[chainId];
         if (!network) throw new Error(`Network ${chainId} not configured`);
 
-        const provider = window.ethereum 
-          ? new ethers.providers.Web3Provider(window.ethereum)
-          : new ethers.providers.JsonRpcProvider(network.rpcUrl);
+        const publicClient = createPublicClient({
+          transport: http(network.rpcUrl)
+        });
         
-        const sdk = await ProtocolSDK.create({
-          provider,
+        const newSdk = await ProtocolSDK.create({
+          publicClient,
           network,
           walletConfig: {
-            dynamicEnvId: process.env.DYNAMIC_ENV_ID,
-            infuraId: process.env.INFURA_ID
+            walletConnectProjectId: process.env.WALLET_CONNECT_PROJECT_ID,
+            fallbackRpcUrl: network.rpcUrl,
+            supportedChainIds: Object.keys(NETWORKS).map(Number)
           }
         });
 
-        setSDK(sdk);
-      } catch (err: any) {
-        setError(err);
+        if (mounted) {
+          setSDK(newSdk);
+          setError(null);
+        }
+      } catch (err) {
+        if (mounted) {
+          setError(ProtocolError.fromError(err));
+        }
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     }
 
     initSDK();
+
+    return () => {
+      mounted = false;
+      sdk?.wallet.disconnect();
+    };
   }, [chainId]);
 
   return { sdk, loading, error };

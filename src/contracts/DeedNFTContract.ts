@@ -1,97 +1,72 @@
-import { BaseContract } from './BaseContract';
-import { DeedInfo, AssetType, TransactionEventCallbacks } from '../types';
-import { DeedNFTABI } from '../abis';
+import { 
+  type PublicClient, 
+  type WalletClient,
+  type Address,
+  type Hash
+} from 'viem'
+import { BaseContract } from './BaseContract'
+import { DeedNFTABI } from '../abis'
+import { AssetType } from '../types'
 
 export class DeedNFTContract extends BaseContract {
-  constructor(address: string, provider: ethers.providers.Web3Provider) {
-    super(address, DeedNFTABI, provider);
-  }
-
-  // Based on FundManager.sol lines 423-450
-  async mintDeed(
-    params: {
-      assetType: AssetType;
-      ipfsDetailsHash: string;
-      operatingAgreement: string;
-      definition: string;
-      configuration: string;
-      validatorContract: string;
-      token: string;
-      ipfsTokenURI: string;
-    },
-    options: {
-      gasPrice?: ethers.BigNumber;
-      callbacks?: TransactionEventCallbacks;
-    } = {}
+  constructor(
+    publicClient: PublicClient,
+    walletClient: WalletClient,
+    address: Address
   ) {
-    try {
-      const tx = await this.estimateAndSendTransaction(
-        'mintDeedNFT',
-        [
-          params.assetType,
-          params.ipfsDetailsHash,
-          params.operatingAgreement,
-          params.definition,
-          params.configuration,
-          params.validatorContract,
-          params.token,
-          params.ipfsTokenURI
-        ],
-        {
-          gasPrice: options.gasPrice,
-          retryConfig: {
-            maxAttempts: 3,
-            initialDelay: 1000
-          }
-        }
-      );
-
-      return this.txManager.monitorTransactionWithUpdates(tx, options.callbacks);
-    } catch (error) {
-      await this.errorHandler.handleError(error, {
-        context: 'mintDeed',
-        params
-      });
-      throw error;
-    }
+    super(publicClient, walletClient, address, DeedNFTABI)
   }
 
-  // Based on DeedNFT.sol lines 526-533
-  async getDeedInfo(deedId: number): Promise<DeedInfo> {
-    return await this.contract.getDeedInfo(deedId);
+  async mintAsset(
+    owner: Address,
+    assetType: AssetType,
+    ipfsDetailsHash: string,
+    operatingAgreement: string,
+    definition: string,
+    configuration: string
+  ): Promise<{ hash: Hash }> {
+    return this.executeTransaction('mintAsset', [
+      owner,
+      assetType,
+      ipfsDetailsHash,
+      operatingAgreement,
+      definition,
+      configuration
+    ])
   }
 
-  async approve(to: string, tokenId: number): Promise<ethers.ContractReceipt> {
-    const signedContract = await this.getSignedContract();
-    return this.handleTransaction(signedContract.approve(to, tokenId));
+  async getDeedInfo(tokenId: bigint): Promise<[
+    AssetType,
+    boolean,
+    string,
+    string,
+    string,
+    string
+  ]> {
+    return this.executeCall('getDeedInfo', [tokenId])
   }
 
-  async setApprovalForAll(operator: string, approved: boolean): Promise<ethers.ContractReceipt> {
-    const signedContract = await this.getSignedContract();
-    return this.handleTransaction(signedContract.setApprovalForAll(operator, approved));
+  async canSubdivide(tokenId: bigint): Promise<boolean> {
+    return this.executeCall('canSubdivide', [tokenId])
   }
 
-  async transferFrom(from: string, to: string, tokenId: number): Promise<ethers.ContractReceipt> {
-    const signedContract = await this.getSignedContract();
-    return this.handleTransaction(signedContract.transferFrom(from, to, tokenId));
+  async ownerOf(tokenId: bigint): Promise<Address> {
+    return this.executeCall('ownerOf', [tokenId])
   }
 
-  async isApprovedForAll(owner: string, operator: string): Promise<boolean> {
-    return await this.contract.isApprovedForAll(owner, operator);
+  async approve(to: Address, tokenId: bigint): Promise<{ hash: Hash }> {
+    return this.executeTransaction('approve', [to, tokenId])
   }
 
-  // Moved from helpers/index.ts
-  async createDeed(params: {
-    assetType: AssetType;
-    ipfsHash: string;
-    agreement: string;
-    definition: string;
-  }) {
-    return this.mintAsset(
-      params.assetType,
-      params.ipfsHash,
-      params.agreement,
-      params.definition
-    );
+  async getApproved(tokenId: bigint): Promise<Address> {
+    return this.executeCall('getApproved', [tokenId])
+  }
+
+  async transferFrom(
+    from: Address,
+    to: Address,
+    tokenId: bigint
+  ): Promise<{ hash: Hash }> {
+    return this.executeTransaction('transferFrom', [from, to, tokenId])
   }
 } 

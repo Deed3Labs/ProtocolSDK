@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
-import { TransactionState, TransactionStatus } from '../utils/transactions';
-import { ProtocolError, ErrorType } from '../utils/errors';
+import { type Hash, type TransactionReceipt } from 'viem';
+import { TransactionState, TransactionStatus } from '../types/transactions';
+import { ProtocolError } from '../utils/errors';
 
 export function useTransaction() {
   const [state, setState] = useState<TransactionState>({
@@ -8,16 +9,16 @@ export function useTransaction() {
   });
 
   const execute = useCallback(async (
-    transaction: () => Promise<ethers.ContractTransaction>,
+    transaction: () => Promise<{ hash: Hash; wait: () => Promise<TransactionReceipt> }>,
     {
       onSuccess,
       onError,
       onSubmitted,
       onMining
     }: {
-      onSuccess?: (receipt: ethers.ContractReceipt) => void;
+      onSuccess?: (receipt: TransactionReceipt) => void;
       onError?: (error: ProtocolError) => void;
-      onSubmitted?: (hash: string) => void;
+      onSubmitted?: (hash: Hash) => void;
       onMining?: (confirmations: number) => void;
     } = {}
   ) => {
