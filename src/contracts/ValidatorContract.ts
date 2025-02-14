@@ -1,26 +1,40 @@
-import { BaseContract } from './BaseContract';
-import { IValidator } from '../types/contracts';
-import { ValidatorABI } from '../abis';
+import { 
+  type PublicClient, 
+  type WalletClient,
+  type Address,
+  type Hash,
+  type TransactionReceipt
+} from 'viem'
+import { BaseContract } from './BaseContract'
+import { IValidator } from '../types/contracts'
+import { ValidatorABI } from '../abis'
 
 export class ValidatorContract extends BaseContract implements IValidator {
-  async tokenURI(tokenId: number): Promise<string> {
-    return await this.contract.tokenURI(tokenId);
+  constructor(
+    publicClient: PublicClient,
+    walletClient: WalletClient,
+    address: Address
+  ) {
+    super(publicClient, walletClient, address, ValidatorABI)
+  }
+
+  async tokenURI(tokenId: bigint): Promise<string> {
+    return this.executeCall('tokenURI', [tokenId])
   }
 
   async defaultOperatingAgreement(): Promise<string> {
-    return await this.contract.defaultOperatingAgreement();
+    return this.executeCall('defaultOperatingAgreement', [])
   }
 
   async operatingAgreementName(uri: string): Promise<string> {
-    return await this.contract.operatingAgreementName(uri);
+    return this.executeCall('operatingAgreementName', [uri])
   }
 
-  async supportsAssetType(assetTypeId: number): Promise<boolean> {
-    return await this.contract.supportsAssetType(assetTypeId);
+  async supportsAssetType(assetTypeId: bigint): Promise<boolean> {
+    return this.executeCall('supportsAssetType', [assetTypeId])
   }
 
-  async validateDeed(deedId: number): Promise<boolean> {
-    const signedContract = await this.getSignedContract();
-    return this.handleTransaction(signedContract.validateDeed(deedId));
+  async validateDeed(deedId: bigint): Promise<{ hash: Hash; wait: () => Promise<TransactionReceipt> }> {
+    return this.executeTransaction('validateDeed', [deedId])
   }
 } 

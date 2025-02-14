@@ -2,14 +2,15 @@ import typescript from '@rollup/plugin-typescript';
 import resolve from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
 import json from '@rollup/plugin-json';
-import { terser } from 'rollup-plugin-terser';
+import terser from '@rollup/plugin-terser';
 import dts from 'rollup-plugin-dts';
+import { readFileSync } from 'fs';
 
-const packageJson = require('./package.json');
+const pkg = JSON.parse(readFileSync('./package.json', 'utf8'));
 
 const external = [
-  ...Object.keys(packageJson.dependencies || {}),
-  ...Object.keys(packageJson.peerDependencies || {})
+  ...Object.keys(pkg.dependencies || {}),
+  ...Object.keys(pkg.peerDependencies || {})
 ];
 
 export default [
@@ -17,13 +18,13 @@ export default [
     input: 'src/index.ts',
     output: [
       {
-        file: packageJson.main,
+        file: pkg.main,
         format: 'cjs',
         sourcemap: true,
         name: 'ProtocolSDK'
       },
       {
-        file: packageJson.module,
+        file: pkg.module,
         format: 'esm',
         sourcemap: true
       }
@@ -42,7 +43,7 @@ export default [
   },
   {
     input: 'src/index.ts',
-    output: [{ file: packageJson.types, format: 'esm' }],
+    output: [{ file: pkg.types, format: 'esm' }],
     plugins: [dts()],
     external
   }

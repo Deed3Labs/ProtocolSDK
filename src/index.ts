@@ -1,16 +1,39 @@
-import dotenv from 'dotenv';
-dotenv.config();
+// Core SDK
+export { ProtocolSDK } from './ProtocolSDK'
+export { createProtocolSDK } from './ProtocolSDK'
 
-export const SDK_VERSION = '0.1.0';
-export * from './ProtocolSDK';
-export * from './types';
-export * from './config/networks';
-export * from './utils/errors';
-export * from './contracts';
-export * from './utils';
-export * from './hooks';
-export * from './types/config';
-export * from './utils/config/networks';
+// Config and Types
+export type {
+  NetworkConfig,
+  ContractAddresses,
+  WalletConfig,
+  SDKConfig
+} from './config/types'
+
+// Networks and Constants
+export { NETWORKS, DEFAULT_NETWORK } from './config/networks'
+export { SUPPORTED_CHAINS } from './config/constants'
+
+// Utils
+export {
+  WalletManager,
+  TransactionManager,
+  EventManager,
+  NetworkMonitor,
+  TransactionQueue,
+  // Error utilities
+  ErrorHandler,
+  ErrorType,
+  ERROR_CODES,
+  ERROR_MESSAGES,
+  ProtocolError
+} from './utils'
+
+// Transaction types
+export type { TransactionOptions } from './utils/transactions'
+
+// React hooks
+export { useProtocolSDK } from './hooks/useProtocolSDK'
 
 // Re-export commonly used types
 export type {
@@ -18,12 +41,4 @@ export type {
   SubdivisionInfo,
   FractionInfo,
   ValidatorInfo
-} from './types';
-
-export type {
-  TransactionState,
-  TransactionStatus,
-  TransactionOptions
-} from './utils/transactions';
-
-export { createProtocolSDK } from './ProtocolSDK'; 
+} from './types' 

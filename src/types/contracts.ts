@@ -1,102 +1,100 @@
-import { ethers } from 'ethers';
-import { AssetType, FractionAssetType, ValidatorInfo } from './index';
+import { type Hash, type TransactionReceipt, type Address } from 'viem'
+import { AssetType, FractionAssetType, ValidatorInfo, FractionInfo } from './index'
 
-export interface DeedNFTContract extends ethers.Contract {
+export interface IDeedNFTContract {
   mintAsset(
-    owner: string,
+    owner: Address,
     assetType: AssetType,
     ipfsDetailsHash: string,
     operatingAgreement: string,
     definition: string,
     configuration: string
-  ): Promise<ethers.ContractTransaction>;
+  ): Promise<{ hash: Hash; wait: () => Promise<TransactionReceipt> }>
   
-  getDeedInfo(tokenId: number): Promise<[
+  getDeedInfo(tokenId: bigint): Promise<[
     AssetType,
     boolean,
     string,
     string,
     string,
     string
-  ]>;
+  ]>
   
-  canSubdivide(tokenId: number): Promise<boolean>;
-  ownerOf(tokenId: number): Promise<string>;
+  canSubdivide(tokenId: bigint): Promise<boolean>
+  ownerOf(tokenId: bigint): Promise<Address>
+  approve(to: Address, tokenId: bigint): Promise<{ hash: Hash }>
+  getApproved(tokenId: bigint): Promise<Address>
+  transferFrom(from: Address, to: Address, tokenId: bigint): Promise<{ hash: Hash }>
 }
 
-export interface ISubdivide extends ethers.Contract {
+export interface ISubdivide {
   createSubdivision(
-    deedId: number,
+    deedId: bigint,
     name: string,
     description: string,
     symbol: string,
     collectionUri: string,
     totalUnits: number,
     burnable: boolean
-  ): Promise<ethers.ContractTransaction>;
+  ): Promise<{ hash: Hash; wait: () => Promise<TransactionReceipt> }>
   
   batchMintUnits(
-    deedId: number, 
-    unitIds: number[], 
-    recipients: string[]
-  ): Promise<ethers.ContractTransaction>;
+    deedId: bigint, 
+    unitIds: bigint[], 
+    recipients: Address[]
+  ): Promise<{ hash: Hash; wait: () => Promise<TransactionReceipt> }>
 }
 
-export interface IValidator extends ethers.Contract {
-  tokenURI(tokenId: number): Promise<string>;
-  defaultOperatingAgreement(): Promise<string>;
-  operatingAgreementName(uri: string): Promise<string>;
-  supportsAssetType(assetTypeId: number): Promise<boolean>;
-  validateDeed(deedId: number): Promise<boolean>;
+export interface IValidator {
+  tokenURI(tokenId: bigint): Promise<string>
+  defaultOperatingAgreement(): Promise<string>
+  operatingAgreementName(uri: string): Promise<string>
+  supportsAssetType(assetTypeId: bigint): Promise<boolean>
+  validateDeed(deedId: bigint): Promise<{ hash: Hash; wait: () => Promise<TransactionReceipt> }>
 }
 
-export interface IValidatorRegistry extends ethers.Contract {
-  getValidatorOwner(validatorContract: string): Promise<string>;
-  getValidatorInfo(validator: string): Promise<ValidatorInfo>;
-  getValidatorsForAssetType(assetTypeId: number): Promise<string[]>;
-  isValidatorActive(validator: string): Promise<boolean>;
-}
-
-export interface IFractionalize extends ethers.Contract {
-  createFraction(
-    assetType: FractionAssetType,
-    tokenId: number,
-    name: string,
-    symbol: string,
-    description: string,
-    totalShares: number,
-    maxSharesPerWallet: number
-  ): Promise<ethers.ContractTransaction>;
-  
-  getFractionInfo(fractionId: number): Promise<FractionInfo>;
-  canReceiveShares(fractionId: number, account: string): Promise<boolean>;
-  getVotingPower(fractionId: number, account: string): Promise<number>;
-}
-
-export interface ValidatorRegistryContract extends ethers.Contract {
+export interface IValidatorRegistry {
   registerValidator(
     name: string,
     description: string,
-    supportedAssetTypes: number[],
+    supportedAssetTypes: AssetType[],
     uri: string
-  ): Promise<ethers.ContractTransaction>;
+  ): Promise<{ hash: Hash; wait: () => Promise<TransactionReceipt> }>
   
-  getValidatorInfo(validator: string): Promise<ValidatorInfo>;
-  isValidatorActive(validator: string): Promise<boolean>;
+  getValidatorInfo(validator: Address): Promise<ValidatorInfo>
+  updateValidatorStatus(validator: Address, isActive: boolean): Promise<{ hash: Hash; wait: () => Promise<TransactionReceipt> }>
+  isValidatorApproved(validator: Address, assetType: AssetType): Promise<boolean>
+  getValidatorsForAssetType(assetType: AssetType): Promise<Address[]>
 }
 
-export interface FundManagerContract extends ethers.Contract {
+export interface IFractionalize {
+  createFraction(
+    assetType: FractionAssetType,
+    tokenId: bigint,
+    name: string,
+    symbol: string,
+    description: string,
+    totalShares: bigint,
+    maxSharesPerWallet: bigint
+  ): Promise<{ hash: Hash; wait: () => Promise<TransactionReceipt> }>
+  
+  getFractionInfo(fractionId: bigint): Promise<FractionInfo>
+  canReceiveShares(fractionId: bigint, account: Address): Promise<boolean>
+  getVotingPower(fractionId: bigint, account: Address): Promise<bigint>
+}
+
+export interface IFundManager {
   mintDeedNFT(
-    owner: string,
-    assetType: number,
+    owner: Address,
+    assetType: AssetType,
     ipfsDetailsHash: string,
     operatingAgreement: string,
     definition: string,
     configuration: string
-  ): Promise<ethers.ContractTransaction>;
+  ): Promise<{ hash: Hash; wait: () => Promise<TransactionReceipt> }>
   
-  getServiceFeesBalance(token: string): Promise<ethers.BigNumber>;
-  withdrawServiceFees(token: string): Promise<ethers.ContractTransaction>;
+  getServiceFeesBalance(token: Address): Promise<bigint>
+  withdrawServiceFees(token: Address): Promise<{ hash: Hash; wait: () => Promise<TransactionReceipt> }>
 }
 
 // Add other contract interfaces... 

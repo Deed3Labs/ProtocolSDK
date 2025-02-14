@@ -1,53 +1,123 @@
-import { ethers } from 'ethers';
-import { DeedNFTEvents, SubdivideEvents, FractionalizeEvents } from '../types/events';
-import { EventEmitter } from 'events';
+import { 
+  type PublicClient, 
+  type Log,
+  type Address,
+  type Abi,
+  type GetContractEventsParameters,
+  getContract
+} from 'viem'
+import { ProtocolError, ErrorType } from './errors'
+
+export type EventCallback = (log: Log) => void
+export type ContractEvents = Record<string, Abi>
 
 export class EventManager {
-  private contracts: {
-    deedNFT: ethers.Contract;
-    subdivide: ethers.Contract;
-    fractionalize: ethers.Contract;
-  };
+  private watchers: Map<string, () => void> = new Map()
+  private listeners: Map<string, Function[]> = new Map()
 
-  private listeners: Map<string, ethers.providers.Listener> = new Map();
+  constructor(private publicClient: PublicClient) {}
 
-  constructor(contracts: {
-    deedNFT: ethers.Contract;
-    subdivide: ethers.Contract;
-    fractionalize: ethers.Contract;
-  }) {
-    this.contracts = contracts;
+  async getLogs(params: GetContractEventsParameters): Promise<Log[]> {
+    try {
+      return await this.publicClient.getContractEvents(params)
+    } catch (error) {
+      throw ProtocolError.fromError(error)
+    }
   }
 
-  listenToDeedEvents(callbacks: Partial<DeedNFTEvents>) {
-    Object.entries(callbacks).forEach(([event, callback]) => {
-      const listener = (...args: any[]) => callback(...args);
-      this.contracts.deedNFT.on(event, listener);
-      this.listeners.set(`deedNFT:${event}`, listener);
-    });
+  watchContractEvent(
+    address: Address,
+    abi: Abi,
+    eventName: string,
+    callback: (logs: Log[]) => void,
+    fromBlock?: bigint
+  ): void {
+    const contract = getContract({
+      address,
+      abi,
+      client: {
+        public: this.publicClient
+      }
+    })
+
+    const unwatch = contract.watchEvent.subscribe(
+      [eventName],
+      {
+        onLogs: callback,
+        strict: true,
+        fromBlock
+      }
+    )
+    
+    this.watchers.set(`${address}-${eventName}`, unwatch)
   }
 
-  listenToSubdivideEvents(callbacks: Partial<SubdivideEvents>) {
-    if (!this.contracts.subdivide) return;
-
-    Object.entries(callbacks).forEach(([event, callback]) => {
-      this.contracts.subdivide?.on(event, (...args) => {
-        callback(...args);
-      });
-    });
+  cleanup(): void {
+    this.watchers.forEach(unwatch => unwatch())
+    this.watchers.clear()
   }
 
-  removeAllListeners() {
-    this.listeners.forEach((listener, key) => {
-      const [contract, event] = key.split(':');
-      this.contracts[contract as keyof typeof this.contracts].off(event, listener);
-    });
-    this.listeners.clear();
+  async subscribe(
+    address: Address,
+    abi: Abi,
+    eventName: string,
+    callback: EventCallback,
+    fromBlock?: bigint
+  ): Promise<string> {
+    try {
+      const subscriptionId = `${address}-${eventName}-${Date.now()}`
+      
+      this.watchContractEvent(
+        address,
+        abi,
+        eventName,
+        (logs) => logs.forEach(callback),
+        fromBlock
+      )
+      
+      return subscriptionId
+    } catch (error) {
+      throw new ProtocolError(
+        ErrorType.CONTRACT_ERROR,
+        ErrorType.CONTRACT_ERROR,
+        error
+      )
+    }
   }
-}
 
-export class SDKEventEmitter extends EventEmitter {
-  emit(event: string, ...args: any[]): boolean {
-    return super.emit(event, ...args);
+  unsubscribe(subscriptionId: string): void {
+    const unwatch = this.watchers.get(subscriptionId)
+    if (unwatch) {
+      unwatch()
+      this.watchers.delete(subscriptionId)
+    }
+  }
+
+  async getPastEvents(
+    address: Address,
+    abi: Abi,
+    eventName: string,
+    fromBlock: bigint,
+    toBlock: bigint
+  ): Promise<Log[]> {
+    try {
+      return await this.publicClient.getContractEvents({
+        address,
+        abi,
+        eventName,
+        fromBlock,
+        toBlock
+      })
+    } catch (error) {
+      throw new ProtocolError(
+        ErrorType.CONTRACT_ERROR,
+        ErrorType.CONTRACT_ERROR,
+        error
+      )
+    }
+  }
+
+  removeAllListeners(): void {
+    this.listeners.clear()
   }
 } 

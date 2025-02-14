@@ -1,8 +1,9 @@
-import { ethers } from 'ethers';
-import { NetworkConfig, ContractAddresses, WalletConfig } from './config';
+import { type PublicClient, type WalletClient } from 'viem'
+import { NetworkConfig, ContractAddresses, WalletConfig } from '../config/types'
 
 export interface BaseConfig {
-  provider: ethers.providers.Provider;
+  publicClient: PublicClient;
+  walletClient?: WalletClient;
   network: NetworkConfig;
   contracts: ContractAddresses;
   walletConfig?: WalletConfig;

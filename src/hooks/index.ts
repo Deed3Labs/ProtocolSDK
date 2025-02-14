@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
+import { type Address } from 'viem';
 import { ProtocolSDK } from '../ProtocolSDK';
-import { AssetType, DeedInfo, SubdivisionInfo } from '../types';
+import { AssetType, DeedInfo } from '../types';
 
 export function useDeedNFT(sdk: ProtocolSDK) {
   const [deeds, setDeeds] = useState<DeedInfo[]>([]);
@@ -11,21 +12,25 @@ export function useDeedNFT(sdk: ProtocolSDK) {
     ipfsHash: string;
     agreement: string;
     definition: string;
+    configuration: string;
   }) => {
+    const account = await sdk.wallet.getAccount();
     return sdk.deedNFT.mintAsset(
+      account.address,
       params.assetType,
       params.ipfsHash,
       params.agreement,
-      params.definition
+      params.definition,
+      params.configuration
     );
   }, [sdk]);
 
   const loadDeeds = useCallback(async () => {
     setLoading(true);
     try {
-      const nextId = await sdk.deedNFT.nextDeedId();
-      const deedPromises = Array.from({ length: nextId }, (_, i) => 
-        sdk.deedNFT.getDeedInfo(i).catch(() => null)
+      const totalSupply = await sdk.deedNFT.totalSupply();
+      const deedPromises = Array.from({ length: Number(totalSupply) }, (_, i) => 
+        sdk.deedNFT.getDeedInfo(BigInt(i)).catch(() => null)
       );
       const deedInfos = await Promise.all(deedPromises);
       setDeeds(deedInfos.filter(Boolean));
@@ -43,17 +48,24 @@ export function useDeedNFT(sdk: ProtocolSDK) {
 
 export function useSubdivide(sdk: ProtocolSDK) {
   const createSubdivision = useCallback(async (params: {
-    deedId: number;
+    deedId: bigint;
     name: string;
     totalUnits: number;
+    description: string;
+    symbol: string;
+    collectionUri: string;
+    burnable: boolean;
   }) => {
-    return sdk.subdivide.createSubdivision(params);
+    return sdk.subdivide.createSubdivision({
+      ...params,
+      totalUnits: BigInt(params.totalUnits)
+    });
   }, [sdk]);
 
   const mintUnits = useCallback(async (
-    deedId: number,
-    unitIds: number[],
-    recipients: string[]
+    deedId: bigint,
+    unitIds: bigint[],
+    recipients: Address[]
   ) => {
     return sdk.subdivide.batchMintUnits(deedId, unitIds, recipients);
   }, [sdk]);

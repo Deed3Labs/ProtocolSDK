@@ -1,37 +1,46 @@
-import { ethers } from 'ethers';
-import { NetworkConfig } from '../types';
+import { type PublicClient } from 'viem'
+import { NetworkConfig } from '../config/types'
+import { ProtocolError, ErrorType } from './errors'
 
 export class NetworkMonitor {
-  private provider: ethers.providers.Provider;
-  private networkConfig: NetworkConfig;
-  private listeners: Set<(chainId: number) => void>;
+  private unwatch: (() => void) | null = null
+  private listeners: Set<(chainId: number) => void> = new Set()
 
-  constructor(provider: ethers.providers.Provider, networkConfig: NetworkConfig) {
-    this.provider = provider;
-    this.networkConfig = networkConfig;
-    this.listeners = new Set();
+  constructor(
+    private publicClient: PublicClient,
+    private networkConfig: NetworkConfig
+  ) {
+    this.setupChainWatcher()
   }
 
-  async validateNetwork() {
-    const network = await this.provider.getNetwork();
-    if (network.chainId !== this.networkConfig.chainId) {
-      throw new Error(`Wrong network. Please connect to ${this.networkConfig.name}`);
+  private setupChainWatcher() {
+    this.unwatch = this.publicClient.transport.subscribe({
+      params: ['eth_chainId'],
+      onData: (chainId: string) => {
+        const numericChainId = parseInt(chainId, 16)
+        this.listeners.forEach(callback => callback(numericChainId))
+      }
+    })
+  }
+
+  async validateNetwork(): Promise<void> {
+    const chainId = await this.publicClient.getChainId()
+    if (chainId !== this.networkConfig.chainId) {
+      throw new ProtocolError(
+        `Wrong network. Please connect to ${this.networkConfig.name}`,
+        ErrorType.NETWORK_MISMATCH
+      )
     }
   }
 
-  onNetworkChange(callback: (chainId: number) => void) {
-    this.listeners.add(callback);
-    if (window.ethereum) {
-      window.ethereum.on('chainChanged', (chainId: string) => {
-        callback(parseInt(chainId));
-      });
-    }
+  onNetworkChange(callback: (chainId: number) => void): void {
+    this.listeners.add(callback)
   }
 
-  cleanup() {
-    if (window.ethereum) {
-      window.ethereum.removeAllListeners('chainChanged');
+  cleanup(): void {
+    if (this.unwatch) {
+      this.unwatch()
     }
-    this.listeners.clear();
+    this.listeners.clear()
   }
 } 
