@@ -3,4 +3,4 @@ export * from './DeedNFTContract';
 export * from './SubdivideContract';
 export * from './FractionalizeContract';
 export * from './ValidatorRegistryContract';
-export * from './BaseContract'; 
+export * from './FundManagerContract'; 
