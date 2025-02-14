@@ -123,6 +123,18 @@ export const NETWORKS: Record<number, NetworkConfig> = {
       validatorRegistry: (process.env.GNOSIS_CHIADO_VALIDATOR_REGISTRY_ADDRESS || '0x0000000000000000000000000000000000000000') as `0x${string}`,
       fundManager: (process.env.GNOSIS_CHIADO_FUND_MANAGER_ADDRESS || '0x0000000000000000000000000000000000000000') as `0x${string}`
     }
+  },
+  [SUPPORTED_CHAINS.GOERLI]: {
+    chainId: SUPPORTED_CHAINS.GOERLI,
+    name: 'Goerli Testnet',
+    rpcUrl: process.env.GOERLI_RPC_URL || 'https://goerli.infura.io/v3/',
+    contracts: {
+      deedNFT: (process.env.GOERLI_DEED_NFT_ADDRESS || '') as `0x${string}`,
+      subdivide: (process.env.GOERLI_SUBDIVIDE_ADDRESS || '') as `0x${string}`,
+      fractionalize: (process.env.GOERLI_FRACTIONALIZE_ADDRESS || '') as `0x${string}`,
+      validatorRegistry: (process.env.GOERLI_VALIDATOR_REGISTRY_ADDRESS || '') as `0x${string}`,
+      fundManager: (process.env.GOERLI_FUND_MANAGER_ADDRESS || '') as `0x${string}`
+    }
   }
   // Add other testnets similarly...
 };

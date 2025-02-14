@@ -1,4 +1,4 @@
-import { type PublicClient, type WalletClient, type Address } from 'viem';
+import { type PublicClient, type Address } from 'viem';
 
 export interface ContractAddresses {
   deedNFT: Address;
@@ -19,6 +19,7 @@ export interface WalletConfig {
   walletConnectProjectId?: string;
   fallbackRpcUrl?: string;
   supportedChainIds?: number[];
+  network?: NetworkConfig;
 }
 
 export interface IPFSConfig {

@@ -1,4 +1,4 @@
-import { type PublicClient, watchChainId } from 'viem'
+import { type PublicClient } from 'viem'
 import { NetworkConfig } from '../config/types'
 import { ProtocolError, ErrorType } from './errors'
 
@@ -14,9 +14,11 @@ export class NetworkMonitor {
   }
 
   private setupChainWatcher() {
-    this.unwatch = watchChainId(this.publicClient, {
-      onChainIdChanged: (chainId) => {
-        this.listeners.forEach(callback => callback(chainId))
+    this.unwatch = this.publicClient.transport.subscribe({
+      params: ['eth_chainId'],
+      onData: (chainId: string) => {
+        const numericChainId = parseInt(chainId, 16)
+        this.listeners.forEach(callback => callback(numericChainId))
       }
     })
   }
@@ -25,8 +27,8 @@ export class NetworkMonitor {
     const chainId = await this.publicClient.getChainId()
     if (chainId !== this.networkConfig.chainId) {
       throw new ProtocolError(
-        ErrorType.NETWORK_MISMATCH,
-        `Wrong network. Please connect to ${this.networkConfig.name}`
+        `Wrong network. Please connect to ${this.networkConfig.name}`,
+        ErrorType.NETWORK_MISMATCH
       )
     }
   }

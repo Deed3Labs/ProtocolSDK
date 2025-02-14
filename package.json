@@ -22,11 +22,11 @@
     "clean": "rm -rf node_modules package-lock.json dist"
   },
   "dependencies": {
-    "@reown/appkit-auth-wagmi-react-native": "1.0.0",
-    "@reown/appkit-coinbase-wagmi-react-native": "1.0.0",
-    "@reown/appkit-siwe-react-native": "1.0.0",
-    "@reown/appkit-wagmi-react-native": "1.0.0",
-    "viem": "^2.0.0"
+    "@reown/appkit": "^1.0.0",
+    "@reown/appkit-adapter-wagmi": "^1.0.0",
+    "wagmi": "^2.0.0",
+    "viem": "^2.0.0",
+    "ipfs-http-client": "^60.0.0"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^25.0.7",

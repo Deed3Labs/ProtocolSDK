@@ -1,61 +1,112 @@
-import { createWeb3Modal } from '@reown/appkit-wagmi-react-native'
-import { createAuthClient } from '@reown/appkit-auth-wagmi-react-native'
-import { createCoinbaseConnector } from '@reown/appkit-coinbase-wagmi-react-native'
-import { createSiweClient } from '@reown/appkit-siwe-react-native'
-import { type PublicClient, type WalletClient, createPublicClient, http } from 'viem'
+import { 
+  AppKit,
+  createAppKit,
+  type AppKitOptions
+} from '@reown/appkit'
+import { 
+  WagmiAdapter 
+} from '@reown/appkit-adapter-wagmi'
+import { 
+  type PublicClient, 
+  type WalletClient, 
+  createPublicClient, 
+  http
+} from 'viem'
 import { ProtocolError, ErrorType } from './errors'
 import type { WalletConfig } from '../types/config'
 
 export class WalletManager {
   private publicClient: PublicClient | null = null
-  private modal: any | null = null
+  private appKit: AppKit | null = null
   private walletClient: WalletClient | null = null
-  private authClient: any | null = null
-  private siweClient: any | null = null
 
   constructor(private config: WalletConfig = {}) {
-    this.initializeWeb3Modal()
+    this.initializeAppKit()
   }
 
-  private initializeWeb3Modal() {
+  private initializeAppKit() {
     const projectId = this.config.walletConnectProjectId
     if (!projectId) {
       throw new ProtocolError(
-        ErrorType.WALLET_CONNECTION,
-        'WalletConnect project ID is required'
+        'WalletConnect project ID is required',
+        ErrorType.INVALID_CONFIG
       )
     }
 
-    this.authClient = createAuthClient({
+    const defaultRpcUrl = this.validateRpcUrl(this.config.fallbackRpcUrl)
+
+    const mainnet = {
+      id: 1,
+      name: 'Ethereum Mainnet',
+      nativeCurrency: {
+        name: 'Ether',
+        symbol: 'ETH',
+        decimals: 18
+      },
+      rpcUrls: {
+        default: { http: [defaultRpcUrl] as [string] },
+        public: { http: [defaultRpcUrl] as [string] }
+      }
+    } as const
+
+    const additionalNetworks = (this.config.supportedChainIds || []).slice(1).map(id => ({
+      id,
+      name: `Chain ${id}`,
+      nativeCurrency: {
+        name: 'Ether',
+        symbol: 'ETH',
+        decimals: 18
+      },
+      rpcUrls: {
+        default: { http: [defaultRpcUrl] as [string] },
+        public: { http: [defaultRpcUrl] as [string] }
+      }
+    }))
+
+    const networks = [mainnet, ...additionalNetworks]
+
+    const options: AppKitOptions = {
       projectId,
-      chains: this.config.supportedChainIds || [1]
-    })
+      networks: [networks[0], ...networks.slice(1)],
+      adapters: [new WagmiAdapter({
+        networks: [networks[0], ...networks.slice(1)],
+        projectId
+      })]
+    }
 
-    this.siweClient = createSiweClient({
-      authClient: this.authClient
-    })
-
-    const coinbaseConnector = createCoinbaseConnector()
-
-    this.modal = createWeb3Modal({
-      projectId,
-      chains: this.config.supportedChainIds || [1],
-      connectors: [coinbaseConnector],
-      authClient: this.authClient,
-      siweClient: this.siweClient
-    })
+    this.appKit = createAppKit(options)
   }
 
-  async connect(): Promise<{ publicClient: PublicClient; walletClient: WalletClient }> {
+  async connect(): Promise<{ 
+    publicClient: PublicClient; 
+    walletClient: WalletClient 
+  }> {
     try {
       if (!this.publicClient || !this.walletClient) {
-        await this.modal.open()
-        const rpcUrl = this.config.fallbackRpcUrl || 'https://eth-mainnet.g.alchemy.com/v2/'
+        await this.appKit?.open()
+
+        const rpcUrl = this.validateRpcUrl(this.config.fallbackRpcUrl)
         this.publicClient = createPublicClient({
           transport: http(rpcUrl)
         })
-        this.walletClient = await this.modal.getWalletClient()
+
+        const walletInfo = await this.appKit?.getWalletInfo()
+        if (!walletInfo?.client) {
+          throw new ProtocolError(
+            'Failed to get wallet client',
+            ErrorType.WALLET_CONNECTION
+          )
+        }
+        this.walletClient = walletInfo.client as WalletClient
       }
+
+      if (!this.publicClient || !this.walletClient) {
+        throw new ProtocolError(
+          'Connection failed',
+          ErrorType.WALLET_CONNECTION
+        )
+      }
+
       return {
         publicClient: this.publicClient,
         walletClient: this.walletClient
@@ -66,16 +117,53 @@ export class WalletManager {
   }
 
   async disconnect(): Promise<void> {
-    if (this.modal) {
-      await this.modal.disconnect()
-      this.publicClient = null
-      this.walletClient = null
+    try {
+      if (this.appKit) {
+        await this.appKit.disconnect()
+        this.cleanup()
+      }
+    } catch (error) {
+      throw ProtocolError.fromError(error)
     }
   }
 
-  async switchNetwork(chainId: number): Promise<void> {
+  async switchNetwork(networkId: number): Promise<void> {
     try {
-      await this.modal.switchNetwork({ chainId })
+      if (!this.appKit) {
+        throw new ProtocolError(
+          'AppKit not initialized',
+          ErrorType.WALLET_CONNECTION
+        )
+      }
+      const network = {
+        id: networkId,
+        name: `Chain ${networkId}`,
+        nativeCurrency: {
+          name: 'Ether',
+          symbol: 'ETH',
+          decimals: 18
+        },
+        rpcUrls: {
+          default: { http: [this.config.fallbackRpcUrl || ''] },
+          public: { http: [this.config.fallbackRpcUrl || ''] }
+        }
+      }
+      await this.appKit.switchNetwork(network)
+    } catch (error) {
+      throw ProtocolError.fromError(error)
+    }
+  }
+
+  async getNetwork(): Promise<{ chainId: number }> {
+    try {
+      if (!this.walletClient) {
+        throw new ProtocolError(
+          'Wallet not connected',
+          ErrorType.UNAUTHORIZED
+        )
+      }
+      const chainId = await this.walletClient.getChainId()
+      return { chainId }
     } catch (error) {
       throw ProtocolError.fromError(error)
     }
@@ -85,10 +173,32 @@ export class WalletManager {
     return this.publicClient
   }
 
-  getClients(): { publicClient: PublicClient | null; walletClient: WalletClient | null } {
+  getClients(): { 
+    publicClient: PublicClient | null; 
+    walletClient: WalletClient | null 
+  } {
     return {
       publicClient: this.publicClient,
       walletClient: this.walletClient
     }
+  }
+
+  private validateRpcUrl(fallbackRpcUrl?: string): string {
+    const defaultRpcUrl = 'https://eth-mainnet.g.alchemy.com/v2/your-api-key'
+    const rpcUrl = fallbackRpcUrl || defaultRpcUrl
+
+    if (!rpcUrl.startsWith('http')) {
+      throw new ProtocolError(
+        'Invalid RPC URL format',
+        ErrorType.INVALID_CONFIG
+      )
+    }
+
+    return rpcUrl
+  }
+
+  private cleanup(): void {
+    this.publicClient = null
+    this.walletClient = null
   }
 } 

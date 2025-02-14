@@ -2,71 +2,52 @@ import {
   type PublicClient, 
   type WalletClient,
   type Address,
-  type Hash
+  type Hash,
+  type TransactionReceipt
 } from 'viem'
-import { BaseContract } from './BaseContract';
-import { FractionInfo, FractionAssetType } from '../types';
-import { FractionalizeABI } from '../abis';
+import { BaseContract } from './BaseContract'
+import { FractionInfo, FractionAssetType } from '../types'
+import { FractionalizeABI } from '../abis'
+import { IFractionalize } from '../types/contracts'
 
-export class FractionalizeContract extends BaseContract {
+export class FractionalizeContract extends BaseContract implements IFractionalize {
   constructor(
     publicClient: PublicClient,
     walletClient: WalletClient,
     address: Address
   ) {
-    super(publicClient, walletClient, address, FractionalizeABI);
+    super(publicClient, walletClient, address, FractionalizeABI)
   }
 
-  async createFraction(params: {
-    assetType: FractionAssetType;
-    tokenId: number;
-    name: string;
-    symbol: string;
-    description: string;
-    totalShares: number;
-    maxSharesPerWallet: number;
-  }) {
-    return this.executeTransaction(
-      'createFraction',
-      [
-        params.assetType,
-        params.tokenId,
-        params.name,
-        params.symbol,
-        params.description,
-        params.totalShares,
-        params.maxSharesPerWallet
-      )
-    );
+  async createFraction(
+    assetType: FractionAssetType,
+    tokenId: bigint,
+    name: string,
+    symbol: string,
+    description: string,
+    totalShares: bigint,
+    maxSharesPerWallet: bigint
+  ): Promise<{ hash: Hash; wait: () => Promise<TransactionReceipt> }> {
+    return this.executeTransaction('createFraction', [
+      assetType,
+      tokenId,
+      name,
+      symbol,
+      description,
+      totalShares,
+      maxSharesPerWallet
+    ])
   }
 
-  async getFractionInfo(fractionId: number): Promise<FractionInfo> {
-    return await this.contract.getFractionInfo(fractionId);
+  async getFractionInfo(fractionId: bigint): Promise<FractionInfo> {
+    return this.executeCall('getFractionInfo', [fractionId])
   }
 
-  async transferShares(fractionId: number, to: string, amount: number) {
-    const signedContract = await this.getSignedContract();
-    return this.handleTransaction(
-      signedContract.transferShares(fractionId, to, amount)
-    );
+  async canReceiveShares(fractionId: bigint, account: Address): Promise<boolean> {
+    return this.executeCall('canReceiveShares', [fractionId, account])
   }
 
-  async proposeUnlock(fractionId: number) {
-    const signedContract = await this.getSignedContract();
-    return this.handleTransaction(
-      signedContract.proposeUnlock(fractionId)
-    );
+  async getVotingPower(fractionId: bigint, account: Address): Promise<bigint> {
+    return this.executeCall('getVotingPower', [fractionId, account])
   }
-
-  async mint(to: Address, tokenId: bigint): Promise<{ hash: Hash }> {
-    return this.executeTransaction('mint', [to, tokenId])
-  }
-
-  async tokenURI(tokenId: bigint): Promise<string> {
-    return this.executeCall('tokenURI', [tokenId])
-  }
-
-  async ownerOf(tokenId: bigint): Promise<Address> {
-    return this.executeCall('ownerOf', [tokenId])
-  }
-} 
+}

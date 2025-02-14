@@ -3,10 +3,8 @@ import {
   type Log,
   type Address,
   type Abi,
-  createEventFilter,
-  getEventArgs,
-  type GetLogsParameters,
-  watchContractEvent
+  type GetContractEventsParameters,
+  getContract
 } from 'viem'
 import { ProtocolError, ErrorType } from './errors'
 
@@ -15,27 +13,41 @@ export type ContractEvents = Record<string, Abi>
 
 export class EventManager {
   private watchers: Map<string, () => void> = new Map()
+  private listeners: Map<string, Function[]> = new Map()
 
   constructor(private publicClient: PublicClient) {}
 
-  async getLogs(params: GetLogsParameters): Promise<Log[]> {
+  async getLogs(params: GetContractEventsParameters): Promise<Log[]> {
     try {
-      return await this.publicClient.getLogs(params)
+      return await this.publicClient.getContractEvents(params)
     } catch (error) {
       throw ProtocolError.fromError(error)
     }
   }
 
-  watchEvent(
+  watchContractEvent(
     address: Address,
+    abi: Abi,
     eventName: string,
-    callback: (log: Log) => void
+    callback: (logs: Log[]) => void,
+    fromBlock?: bigint
   ): void {
-    const unwatch = watchContractEvent(this.publicClient, {
+    const contract = getContract({
       address,
-      eventName,
-      onLogs: callback
+      abi,
+      client: {
+        public: this.publicClient
+      }
     })
+
+    const unwatch = contract.watchEvent.subscribe(
+      [eventName],
+      {
+        onLogs: callback,
+        strict: true,
+        fromBlock
+      }
+    )
     
     this.watchers.set(`${address}-${eventName}`, unwatch)
   }
@@ -53,30 +65,21 @@ export class EventManager {
     fromBlock?: bigint
   ): Promise<string> {
     try {
-      const filter = await createEventFilter(this.publicClient, {
-        address,
-        event: abi.find(x => x.type === 'event' && x.name === eventName),
-        fromBlock
-      })
-
-      const unwatch = this.publicClient.watchContractEvent({
-        ...filter,
-        onLogs: (logs) => {
-          logs.forEach(log => {
-            const args = getEventArgs({ abi, eventName, log })
-            callback({ ...log, args })
-          })
-        }
-      })
-
       const subscriptionId = `${address}-${eventName}-${Date.now()}`
-      this.watchers.set(subscriptionId, unwatch)
+      
+      this.watchContractEvent(
+        address,
+        abi,
+        eventName,
+        (logs) => logs.forEach(callback),
+        fromBlock
+      )
+      
       return subscriptionId
-
     } catch (error) {
       throw new ProtocolError(
-        ErrorType.EVENT_SUBSCRIPTION,
-        `Failed to subscribe to event ${eventName}`,
+        ErrorType.CONTRACT_ERROR,
+        ErrorType.CONTRACT_ERROR,
         error
       )
     }
@@ -98,24 +101,23 @@ export class EventManager {
     toBlock: bigint
   ): Promise<Log[]> {
     try {
-      const logs = await this.publicClient.getContractEvents({
+      return await this.publicClient.getContractEvents({
         address,
         abi,
         eventName,
         fromBlock,
         toBlock
       })
-
-      return logs.map(log => ({
-        ...log,
-        args: getEventArgs({ abi, eventName, log })
-      }))
     } catch (error) {
       throw new ProtocolError(
-        ErrorType.EVENT_SUBSCRIPTION,
-        `Failed to get past events for ${eventName}`,
+        ErrorType.CONTRACT_ERROR,
+        ErrorType.CONTRACT_ERROR,
         error
       )
     }
+  }
+
+  removeAllListeners(): void {
+    this.listeners.clear()
   }
 } 

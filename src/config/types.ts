@@ -1,11 +1,4 @@
-import { type PublicClient, type WalletClient, type Address } from 'viem'
-
-export interface NetworkConfig {
-  name: string
-  chainId: number
-  rpcUrl: string
-  contracts: ContractAddresses
-}
+import { type PublicClient, type Address } from 'viem'
 
 export interface ContractAddresses {
   deedNFT: Address
@@ -13,6 +6,13 @@ export interface ContractAddresses {
   fractionalize: Address
   validatorRegistry: Address
   fundManager: Address
+}
+
+export interface NetworkConfig {
+  name: string
+  chainId: number
+  rpcUrl: string
+  contracts: ContractAddresses
 }
 
 export interface WalletConfig {

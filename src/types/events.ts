@@ -1,59 +1,48 @@
-import { ethers } from 'ethers';
+import { type Address, type Log } from 'viem'
 
 export interface SubdivideEvents {
-  SubdivisionCreated: (deedId: number, name: string, totalUnits: number) => void;
-  UnitMinted: (deedId: number, unitId: number, recipient: string) => void;
-  UnitBurned: (deedId: number, unitId: number, burner: string) => void;
-  SubdivisionDeactivated: (deedId: number) => void;
-  CollectionAdminTransferred: (deedId: number, previousAdmin: string, newAdmin: string) => void;
+  SubdivisionCreated: (deedId: bigint, name: string, totalUnits: bigint) => void;
+  UnitMinted: (deedId: bigint, unitId: bigint, recipient: Address) => void;
+  UnitBurned: (deedId: bigint, unitId: bigint, burner: Address) => void;
+  SubdivisionDeactivated: (deedId: bigint) => void;
+  CollectionAdminTransferred: (deedId: bigint, previousAdmin: Address, newAdmin: Address) => void;
 }
 
 export interface FractionalizeEvents {
-  FractionCreated: (fractionId: number, assetType: number, originalTokenId: number) => void;
-  SharesTransferred: (fractionId: number, from: string, to: string, amount: number) => void;
-  SharesMinted: (fractionId: number, to: string, amount: number) => void;
-  SharesBurned: (fractionId: number, from: string, amount: number) => void;
+  FractionCreated: (fractionId: bigint, assetType: bigint, originalTokenId: bigint) => void;
+  SharesTransferred: (fractionId: bigint, from: Address, to: Address, amount: bigint) => void;
+  SharesMinted: (fractionId: bigint, to: Address, amount: bigint) => void;
+  SharesBurned: (fractionId: bigint, from: Address, amount: bigint) => void;
 }
 
 export interface DeedNFTEvents {
-  DeedCreated: (deedId: number, owner: string, assetType: number) => void;
-  DeedValidated: (deedId: number, validator: string) => void;
-  Transfer: (from: string, to: string, tokenId: number) => void;  
+  DeedCreated: (deedId: bigint, owner: Address, assetType: bigint) => void;
+  DeedValidated: (deedId: bigint, validator: Address) => void;
+  Transfer: (from: Address, to: Address, tokenId: bigint) => void;  
 }
 
 export interface ValidatorEvents {
-  ValidatorRegistered: (validator: string, name: string, assetTypes: number[]) => void;
-  ValidatorStatusUpdated: (validator: string, isActive: boolean) => void;
-}
-
-export interface TransactionResponse {
-  success: boolean;
-  receipt?: ethers.ContractReceipt;
-  error?: string;
+  ValidatorRegistered: (validator: Address, name: string, assetTypes: bigint[]) => void;
+  ValidatorStatusUpdated: (validator: Address, isActive: boolean) => void;
 }
 
 export interface EventFilter {
-  fromBlock?: number;
-  toBlock?: number;
-  address?: string;
+  fromBlock?: bigint;
+  toBlock?: bigint;
+  address?: Address;
 }
 
-export type EventCallback<T> = (event: T) => void;
+export type EventCallback = (log: Log) => void;
 
 export interface ContractEventTypes {
-  DeedCreated: (deedId: number, owner: string) => void;
-  SubdivisionCreated: (deedId: number, name: string) => void;
-  FractionCreated: (fractionId: number, assetType: number) => void;
-  ValidatorRegistered: (validator: string, name: string) => void;
+  DeedCreated: (deedId: bigint, owner: Address) => void;
+  SubdivisionCreated: (deedId: bigint, name: string) => void;
+  FractionCreated: (fractionId: bigint, assetType: bigint) => void;
+  ValidatorRegistered: (validator: Address, name: string) => void;
 }
 
 export interface EventConfig {
-  fromBlock?: number;
-  toBlock?: number | 'latest';
+  fromBlock?: bigint;
+  toBlock?: bigint | 'latest';
   filter?: Record<string, any>;
 }
-
-export type EventCallback = (
-  event: ethers.Event,
-  handler: (error: Error | null, result?: any) => void
-) => void; 

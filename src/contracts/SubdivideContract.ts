@@ -2,33 +2,35 @@ import {
   type PublicClient, 
   type WalletClient,
   type Address,
-  type Hash
+  type Hash,
+  type TransactionReceipt
 } from 'viem'
 import { BaseContract } from './BaseContract'
 import { SubdivideABI } from '../abis'
 import { SubdivisionInfo } from '../types'
+import { DeedNFTContract } from './DeedNFTContract'
 
 export class SubdivideContract extends BaseContract {
   constructor(
     publicClient: PublicClient,
     walletClient: WalletClient,
-    address: Address
+    address: Address,
+    private deedNFTContract: DeedNFTContract
   ) {
     super(publicClient, walletClient, address, SubdivideABI)
   }
 
   // Reference Subdivide.sol lines 219-247
   async createSubdivision(params: {
-    deedId: number;
+    deedId: bigint;
     name: string;
     description: string;
     symbol: string;
     collectionUri: string;
-    totalUnits: number;
+    totalUnits: bigint;
     burnable: boolean;
-  }) {
-    const signedContract = await this.getSignedContract();
-    const tx = await signedContract.createSubdivision(
+  }): Promise<{ hash: Hash; wait: () => Promise<TransactionReceipt> }> {
+    return this.executeTransaction('createSubdivision', [
       params.deedId,
       params.name,
       params.description,
@@ -36,44 +38,46 @@ export class SubdivideContract extends BaseContract {
       params.collectionUri,
       params.totalUnits,
       params.burnable
-    );
-    return tx.wait();
+    ])
   }
 
   // Reference Subdivide.sol lines 337-366
-  async batchMintUnits(deedId: number, unitIds: number[], recipients: string[]) {
-    const signedContract = await this.getSignedContract();
-    const tx = await signedContract.batchMintUnits(deedId, unitIds, recipients);
-    return tx.wait();
+  async batchMintUnits(
+    deedId: bigint, 
+    unitIds: bigint[], 
+    recipients: Address[]
+  ): Promise<{ hash: Hash; wait: () => Promise<TransactionReceipt> }> {
+    return this.executeTransaction('batchMintUnits', [deedId, unitIds, recipients])
   }
 
-  async getSubdivisionInfo(deedId: number): Promise<SubdivisionInfo> {
-    return await this.contract.subdivisions(deedId);
+  async getSubdivisionInfo(deedId: bigint): Promise<SubdivisionInfo> {
+    return this.executeCall('getSubdivisionInfo', [deedId])
   }
 
   // Reference Subdivide.sol lines 373-382
-  async burnUnit(deedId: number, unitId: number) {
-    const signedContract = await this.getSignedContract();
-    const tx = await signedContract.burnUnit(deedId, unitId);
-    return tx.wait();
+  async burnUnit(
+    deedId: bigint, 
+    unitId: bigint
+  ): Promise<{ hash: Hash; wait: () => Promise<TransactionReceipt> }> {
+    return this.executeTransaction('burnUnit', [deedId, unitId])
   }
 
   // Reference Subdivide.sol lines 388-395
-  async deactivateSubdivision(deedId: number) {
-    const signedContract = await this.getSignedContract();
-    const tx = await signedContract.deactivateSubdivision(deedId);
-    return tx.wait();
+  async deactivateSubdivision(
+    deedId: bigint
+  ): Promise<{ hash: Hash; wait: () => Promise<TransactionReceipt> }> {
+    return this.executeTransaction('deactivateSubdivision', [deedId])
   }
 
   // Moved from helpers/index.ts
   async subdivideAsset(params: {
-    deedId: number;
-    units: number;
+    deedId: bigint;
+    units: bigint;
     name: string;
     symbol: string;
     description?: string;
-  }) {
-    const canSubdivide = await this.deedNFT.canSubdivide(params.deedId);
+  }): Promise<{ hash: Hash; wait: () => Promise<TransactionReceipt> }> {
+    const canSubdivide = await this.deedNFTContract.canSubdivide(params.deedId);
     if (!canSubdivide) {
       throw new Error('Asset cannot be subdivided');
     }
@@ -84,6 +88,7 @@ export class SubdivideContract extends BaseContract {
       name: params.name,
       symbol: params.symbol,
       description: params.description || '',
+      collectionUri: '',
       burnable: true
     });
   }

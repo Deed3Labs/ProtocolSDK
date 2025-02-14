@@ -1,6 +1,5 @@
-import { BaseError } from 'viem'
-import { ProtocolError, ErrorType, ERROR_CODES } from './errors'
-import { SDKErrorDetails } from '../types/errors'
+import { type PublicClient } from 'viem'
+import { ProtocolError, ErrorType } from './errors'
 
 interface RetryConfig {
   maxAttempts: number;
@@ -9,19 +8,41 @@ interface RetryConfig {
   backoffFactor?: number;
 }
 
-export enum ErrorType {
-  TRANSACTION_FAILED = 'TRANSACTION_FAILED',
-  CONTRACT_ERROR = 'CONTRACT_ERROR',
-  NETWORK_ERROR = 'NETWORK_ERROR',
-  VALIDATION_ERROR = 'VALIDATION_ERROR',
-  UNKNOWN_ERROR = 'UNKNOWN_ERROR'
-}
-
 export class ErrorHandler {
-  constructor(private provider: providers.Provider) {}
+  constructor(private client: PublicClient) {}
 
-  handleError(error: unknown): ProtocolError {
-    return ProtocolError.fromError(error)
+  async handleError(error: unknown): Promise<ProtocolError> {
+    if (!(error instanceof Error)) {
+      return ProtocolError.fromError(error)
+    }
+
+    try {
+      if (this.isNonceError(error)) {
+        const result = await this.handleNonceError(error)
+        return new ProtocolError(
+          `Nonce error occurred: ${error.message}`,
+          ErrorType.TRANSACTION_FAILED,
+          { originalError: error, ...result }
+        )
+      }
+
+      if (this.isGasError(error)) {
+        const result = await this.handleGasError()
+        return new ProtocolError(
+          `Gas estimation failed: ${error.message}`,
+          ErrorType.TRANSACTION_FAILED,
+          { originalError: error, ...result }
+        )
+      }
+
+      if (this.isNetworkError(error)) {
+        await this.handleNetworkError(error)
+      }
+
+      return ProtocolError.fromError(error)
+    } catch (e) {
+      return ProtocolError.fromError(e)
+    }
   }
 
   async withRetry<T>(
@@ -34,8 +55,8 @@ export class ErrorHandler {
     for (let attempt = 1; attempt <= config.maxAttempts; attempt++) {
       try {
         return await operation()
-      } catch (error) {
-        lastError = error instanceof Error ? error : new Error(String(error))
+      } catch (err) {
+        lastError = err instanceof Error ? err : new Error(String(err))
         
         if (attempt === config.maxAttempts) break
         
@@ -47,7 +68,7 @@ export class ErrorHandler {
       }
     }
 
-    throw this.handleError(lastError)
+    throw await this.handleError(lastError)
   }
 
   private isNonceError(error: any): boolean {
@@ -55,26 +76,24 @@ export class ErrorHandler {
   }
 
   private async handleNonceError(error: any) {
-    const signer = this.provider instanceof ethers.providers.Web3Provider 
-      ? this.provider.getSigner()
-      : null;
-    
-    if (!signer) throw error;
-
-    const address = await signer.getAddress();
-    const nonce = await this.provider.getTransactionCount(address);
-    
-    return { nonce };
+    try {
+      const nonce = await this.client.getTransactionCount({ 
+        address: error.account as `0x${string}`
+      })
+      return { nonce }
+    } catch {
+      throw error
+    }
   }
 
   private isGasError(error: any): boolean {
     return error.message?.includes('gas') || error.message?.includes('fee');
   }
 
-  private async handleGasError(error: any) {
-    const gasPrice = await this.provider.getGasPrice();
+  private async handleGasError() {
+    const gasPrice = await this.client.getGasPrice();
     return {
-      gasPrice: gasPrice.mul(12).div(10) // Increase by 20%
+      gasPrice: BigInt(Math.floor(Number(gasPrice) * 1.2)) // Increase by 20%
     };
   }
 

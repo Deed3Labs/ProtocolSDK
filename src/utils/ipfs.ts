@@ -3,7 +3,6 @@ import { IPFSConfig } from '../types/config';
 
 export class IPFSManager {
   private client: any;
-  private gateway: string;
 
   constructor(config: IPFSConfig) {
     this.client = create({
@@ -11,7 +10,6 @@ export class IPFSManager {
       port: config.port,
       protocol: config.protocol
     });
-    this.gateway = config.gateway;
   }
 
   async uploadMetadata(metadata: any): Promise<string> {
@@ -19,9 +17,16 @@ export class IPFSManager {
     return result.path;
   }
 
+  private async streamToString(stream: any): Promise<string> {
+    const chunks = [];
+    for await (const chunk of stream) {
+      chunks.push(chunk);
+    }
+    return Buffer.concat(chunks).toString();
+  }
+
   async getMetadata(hash: string): Promise<any> {
     const stream = this.client.cat(hash);
-    const data = await this.streamToString(stream);
-    return JSON.parse(data);
+    return JSON.parse(await this.streamToString(stream));
   }
-} 
+}

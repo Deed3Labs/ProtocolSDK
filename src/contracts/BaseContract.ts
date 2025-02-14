@@ -4,26 +4,26 @@ import {
   type Address,
   type Hash,
   type TransactionReceipt,
+  type Abi,
   type GetContractReturnType,
   getContract
 } from 'viem'
-import { ProtocolError } from '../utils/errors'
+import { ProtocolError, ErrorType } from '../utils/errors'
 
 export abstract class BaseContract {
-  protected contract: GetContractReturnType
+  protected contract!: GetContractReturnType<Abi>
 
   constructor(
     protected publicClient: PublicClient,
     protected walletClient: WalletClient,
     protected address: Address,
-    protected abi: any
+    protected abi: Abi
   ) {
     this.contract = getContract({
-      address,
-      abi,
-      client: publicClient,
-      walletClient
-    })
+      address: this.address,
+      abi: this.abi as Abi,
+      client: this.publicClient
+    }) as GetContractReturnType<Abi>
   }
 
   protected async executeTransaction(
@@ -31,7 +31,23 @@ export abstract class BaseContract {
     args: any[]
   ): Promise<{ hash: Hash; wait: () => Promise<TransactionReceipt> }> {
     try {
-      const hash = await this.contract.write[method](args)
+      if (!this.walletClient) {
+        throw new ProtocolError(
+          'Wallet client is required for signing transactions',
+          ErrorType.UNAUTHORIZED
+        )
+      }
+
+      const { request } = await this.publicClient.simulateContract({
+        address: this.address,
+        abi: this.abi as Abi,
+        functionName: method,
+        args,
+        account: this.walletClient.account
+      })
+
+      const hash = await this.walletClient.writeContract(request)
+      
       return {
         hash,
         wait: async () => await this.publicClient.waitForTransactionReceipt({ hash })
@@ -43,7 +59,13 @@ export abstract class BaseContract {
 
   protected async executeCall<T>(method: string, args: any[]): Promise<T> {
     try {
-      return await this.contract.read[method](...args)
+      const data = await this.publicClient.readContract({
+        address: this.address,
+        abi: this.abi as Abi,
+        functionName: method,
+        args
+      })
+      return data as T
     } catch (error) {
       throw ProtocolError.fromError(error)
     }

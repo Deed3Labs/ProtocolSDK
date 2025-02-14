@@ -10,17 +10,19 @@ import { WalletManager } from './utils/wallet';
 import { EventManager } from './utils/events';
 import { TransactionManager } from './utils/transactions';
 import { ErrorHandler } from './utils/errorHandler';
-import { TransactionQueue } from './utils/transactionQueue';
+import { TransactionQueue, QueueStatus } from './utils/transactionQueue';
 import { SDKConfig, NetworkConfig } from './config/types';
-import { SDKError, ERROR_CODES } from './utils/errors';
-import { NetworkMonitor } from './utils/networkMonitor';
 import { ProtocolError, ErrorType } from './utils/errors';
+import { NetworkMonitor } from './utils/networkMonitor';
 
-export * from './types';
-export * from './contracts';
-export * from './utils/wallet';
-export * from './utils/events';
+// Only export the SDK class and creation function
 export { ProtocolSDK as default } from './ProtocolSDK';
+export const createProtocolSDK = async (config: SDKConfig): Promise<ProtocolSDK> => {
+  return ProtocolSDK.create(config);
+};
+
+// Export types from a single location
+export * from './types';
 
 export class ProtocolSDK {
   public readonly wallet: WalletManager;
@@ -29,11 +31,11 @@ export class ProtocolSDK {
   public readonly errorHandler: ErrorHandler;
   public readonly txQueue: TransactionQueue;
   
-  public deedNFT: DeedNFTContract;
-  public subdivide: SubdivideContract;
-  public fractionalize: FractionalizeContract;
-  public validatorRegistry: ValidatorRegistryContract;
-  public fundManager: FundManagerContract;
+  public deedNFT!: DeedNFTContract;
+  public subdivide!: SubdivideContract;
+  public fractionalize!: FractionalizeContract;
+  public validatorRegistry!: ValidatorRegistryContract;
+  public fundManager!: FundManagerContract;
 
   private publicClient: PublicClient;
   private network: NetworkConfig;
@@ -45,35 +47,41 @@ export class ProtocolSDK {
     this.publicClient = config.publicClient;
     this.network = config.network;
     
-    this.wallet = new WalletManager(config.walletConfig);
+    // Initialize wallet manager with AppKit
+    this.wallet = new WalletManager({
+      ...config.walletConfig,
+      network: this.network,
+      supportedChainIds: [this.network.chainId] // Ensure network chainId is supported
+    });
+    
     this.transactions = new TransactionManager(this.publicClient);
-    this.errorHandler = new ErrorHandler();
+    this.errorHandler = new ErrorHandler(this.publicClient);
     this.txQueue = new TransactionQueue();
-
     this.events = new EventManager(this.publicClient);
+    
     this.setupNetworkMonitoring();
   }
 
   private validateConfig(config: SDKConfig): void {
     if (!config.publicClient) {
       throw new ProtocolError(
-        ErrorType.INVALID_CONFIG,
-        'Public client is required'
-      )
+        'Public client is required',
+        ErrorType.INVALID_CONFIG
+      );
     }
 
     if (!config.network) {
       throw new ProtocolError(
-        ErrorType.INVALID_CONFIG,
-        'Network configuration is required'
-      )
+        'Network configuration is required',
+        ErrorType.INVALID_CONFIG
+      );
     }
 
     if (!config.network.contracts) {
       throw new ProtocolError(
-        ErrorType.INVALID_CONFIG,
-        'Contract addresses are required'
-      )
+        'Contract addresses are required',
+        ErrorType.INVALID_CONFIG
+      );
     }
   }
 
@@ -90,7 +98,8 @@ export class ProtocolSDK {
     this.subdivide = new SubdivideContract(
       this.publicClient,
       this.walletClient,
-      this.network.contracts.subdivide
+      this.network.contracts.subdivide,
+      this.deedNFT
     );
     
     this.fractionalize = new FractionalizeContract(
@@ -159,24 +168,20 @@ export class ProtocolSDK {
     }
   }
 
-  async getGasPrice(): Promise<providers.BigNumber> {
+  async getGasPrice(): Promise<bigint> {
     return this.transactions.getGasPrice();
   }
 
-  getPendingTransactions() {
+  getPendingTransactions(): QueueStatus {
     return this.txQueue.getQueueStatus();
   }
 
   // Cleanup method
   destroy() {
     this.events.removeAllListeners();
-    this.txQueue.clearQueue();
-    if (this.publicClient.removeAllListeners) {
-      this.publicClient.removeAllListeners();
-    }
+    this.txQueue.clear();
   }
 }
 
-export const createProtocolSDK = async (config: SDKConfig): Promise<ProtocolSDK> => {
-  return ProtocolSDK.create(config);
-};
+export type { SDKConfig } from './types/sdk'
+export type { QueueStatus } from './utils/transactionQueue'

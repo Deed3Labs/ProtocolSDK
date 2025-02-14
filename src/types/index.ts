@@ -1,5 +1,3 @@
-import { ethers } from 'ethers';
-
 // From DeedNFT.sol
 export enum AssetType {
   Land,
@@ -80,6 +78,9 @@ export interface IValidatorRegistry {
 
 // Add missing exports
 export * from './config';
+export * from './transactions';
+export * from './events';
+export * from './errors';
 
 // Add missing interfaces for contract events
 export interface SubdivideEvents {
@@ -95,3 +96,12 @@ export interface FractionalizeEvents {
   UnlockApproved: (fractionId: number, approver: string) => void;
   AssetUnlocked: (fractionId: number, assetType: FractionAssetType, originalTokenId: number) => void;
 }
+
+// SDK Configuration types
+export type { SDKConfig } from './sdk'
+export type { BaseConfig } from './BaseConfig'
+export type { TransactionEventCallbacks } from './transactions'
+export type { ContractAddresses } from './config'
+
+// Re-export all other types
+export * from './config'

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { createPublicClient, http } from 'viem';
+import { createPublicClient, http, type Chain } from 'viem';
 import { ProtocolSDK } from '../ProtocolSDK';
 import { NETWORKS } from '../config/networks';
 import { SUPPORTED_CHAINS } from '../config/constants';
@@ -18,8 +18,24 @@ export function useProtocolSDK(chainId: number = SUPPORTED_CHAINS.LOCALHOST) {
         const network = NETWORKS[chainId];
         if (!network) throw new Error(`Network ${chainId} not configured`);
 
+        // Create chain configuration for viem
+        const chain: Chain = {
+          id: network.chainId,
+          name: network.name,
+          rpcUrls: {
+            default: { http: [network.rpcUrl] },
+            public: { http: [network.rpcUrl] },
+          },
+          nativeCurrency: {
+            name: 'Ether',
+            symbol: 'ETH',
+            decimals: 18,
+          }
+        };
+
         const publicClient = createPublicClient({
-          transport: http(network.rpcUrl)
+          transport: http(network.rpcUrl),
+          chain
         });
         
         const newSdk = await ProtocolSDK.create({
@@ -51,7 +67,9 @@ export function useProtocolSDK(chainId: number = SUPPORTED_CHAINS.LOCALHOST) {
 
     return () => {
       mounted = false;
-      sdk?.wallet.disconnect();
+      if (sdk?.wallet) {
+        sdk.wallet.disconnect();
+      }
     };
   }, [chainId]);
 

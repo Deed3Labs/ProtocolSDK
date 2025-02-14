@@ -2,7 +2,8 @@ import {
   type PublicClient, 
   type WalletClient,
   type Address,
-  type Hash
+  type Hash,
+  type TransactionReceipt
 } from 'viem'
 import { BaseContract } from './BaseContract';
 import { AssetType } from '../types';
@@ -26,23 +27,20 @@ export class FundManagerContract extends BaseContract {
     validatorContract: string;
     token: string;
     ipfsTokenURI: string;
-  }) {
-    const signedContract = await this.getSignedContract();
-    return this.handleTransaction(
-      signedContract.mintDeedNFT(
-        params.assetType,
-        params.ipfsDetailsHash,
-        params.operatingAgreement,
-        params.definition,
-        params.configuration,
-        params.validatorContract,
-        params.token,
-        params.ipfsTokenURI
-      )
-    );
+  }): Promise<{ hash: Hash; wait: () => Promise<TransactionReceipt> }> {
+    return this.executeTransaction('mintDeedNFT', [
+      params.assetType,
+      params.ipfsDetailsHash,
+      params.operatingAgreement,
+      params.definition,
+      params.configuration,
+      params.validatorContract,
+      params.token,
+      params.ipfsTokenURI
+    ]);
   }
 
-  async getServiceFeesBalance(token: string): Promise<ethers.BigNumber> {
-    return await this.contract.getServiceFeesBalance(token);
+  async getServiceFeesBalance(token: string): Promise<bigint> {
+    return this.executeCall('getServiceFeesBalance', [token]);
   }
 } 

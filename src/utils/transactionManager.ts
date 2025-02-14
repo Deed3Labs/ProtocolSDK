@@ -1,34 +1,36 @@
 import { 
   type PublicClient,
-  type Hash,
   type TransactionReceipt,
-  type TransactionRequest,
-  waitForTransactionReceipt,
-  watchPendingTransactions,
-  watchBlocks
+  type Hash
 } from 'viem'
+import { 
+  getTransactionReceipt,
+  watchPendingTransactions,
+  watchBlocks 
+} from 'viem/actions'
 import { ProtocolError, ErrorType } from './errors'
 import { TransactionEventCallbacks } from '../types/transactions'
 
 export class TransactionManager {
+  private client: PublicClient
   private watchedTransactions: Map<Hash, {
     unwatch: () => void;
     callbacks: TransactionEventCallbacks;
   }> = new Map()
 
-  constructor(private publicClient: PublicClient) {}
+  constructor(client: PublicClient) {
+    this.client = client
+  }
 
-  async waitForTransaction(
-    hash: Hash,
-    confirmations: number = 1
-  ): Promise<TransactionReceipt> {
+  async waitForTransaction(hash: Hash): Promise<TransactionReceipt> {
     try {
-      return await waitForTransactionReceipt(this.publicClient, {
-        hash,
-        confirmations
-      })
+      return await getTransactionReceipt(this.client, { hash })
     } catch (error) {
-      throw ProtocolError.fromError(error)
+      throw new ProtocolError(
+        `Failed to wait for transaction ${hash}`,
+        ErrorType.TRANSACTION_ERROR,
+        error
+      )
     }
   }
 
@@ -41,8 +43,8 @@ export class TransactionManager {
       return () => this.stopWatching(hash)
     }
 
-    const unwatchPending = watchPendingTransactions(this.publicClient, {
-      onTransactions: async (hashes) => {
+    const unwatchPending = watchPendingTransactions(this.client, {
+      onTransactions: async (hashes: Hash[]) => {
         if (hashes.includes(hash)) {
           callbacks.onPending?.()
         }
@@ -50,10 +52,10 @@ export class TransactionManager {
     })
 
     let confirmedBlocks = 0
-    const unwatchBlocks = watchBlocks(this.publicClient, {
+    const unwatchBlocks = watchBlocks(this.client, {
       onBlock: async () => {
         try {
-          const receipt = await this.publicClient.getTransactionReceipt({ hash })
+          const receipt = await this.client.getTransactionReceipt({ hash })
           if (receipt) {
             confirmedBlocks++
             callbacks.onConfirmation?.(confirmedBlocks)
@@ -98,9 +100,15 @@ export class TransactionManager {
 
   async getTransactionReceipt(hash: Hash): Promise<TransactionReceipt> {
     try {
-      return await this.publicClient.getTransactionReceipt({ hash })
+      return await this.client.getTransactionReceipt({ hash })
     } catch (error) {
       throw ProtocolError.fromError(error)
     }
+  }
+
+  watchTransactions(onTransactions: (hashes: Hash[]) => Promise<void>) {
+    return watchPendingTransactions(this.client, {
+      onTransactions
+    })
   }
 } 
