@@ -7,28 +7,37 @@ import {
 import { BaseContract } from './BaseContract'
 import { DeedNFTABI } from '../abis'
 import { AssetType } from '../types'
+import { IPFSClient } from '../utils/ipfs'
 
 export class DeedNFTContract extends BaseContract {
+  private ipfsClient: IPFSClient;
+
   constructor(
     publicClient: PublicClient,
     walletClient: WalletClient,
     address: Address
   ) {
     super(publicClient, walletClient, address, DeedNFTABI)
+    this.ipfsClient = new IPFSClient();
   }
 
   async mintAsset(
     owner: Address,
     assetType: AssetType,
-    ipfsDetailsHash: string,
     operatingAgreement: string,
     definition: string,
     configuration: string
   ): Promise<{ hash: Hash }> {
+    const detailsCid = await this.ipfsClient.addFile(JSON.stringify({
+      operatingAgreement,
+      definition,
+      configuration
+    }));
+
     return this.executeTransaction('mintAsset', [
       owner,
       assetType,
-      ipfsDetailsHash,
+      detailsCid,
       operatingAgreement,
       definition,
       configuration
@@ -68,5 +77,9 @@ export class DeedNFTContract extends BaseContract {
     tokenId: bigint
   ): Promise<{ hash: Hash }> {
     return this.executeTransaction('transferFrom', [from, to, tokenId])
+  }
+
+  async totalSupply(): Promise<bigint> {
+    return this.executeCall('totalSupply', []);
   }
 } 

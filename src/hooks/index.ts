@@ -9,16 +9,19 @@ export function useDeedNFT(sdk: ProtocolSDK) {
 
   const createDeed = useCallback(async (params: {
     assetType: AssetType;
-    ipfsHash: string;
     agreement: string;
     definition: string;
     configuration: string;
   }) => {
-    const account = await sdk.wallet.getAccount();
+    const { walletClient } = await sdk.wallet.connect();
+    
+    if (!walletClient.account) {
+      throw new Error('No wallet account connected');
+    }
+
     return sdk.deedNFT.mintAsset(
-      account.address,
+      walletClient.account.address,
       params.assetType,
-      params.ipfsHash,
       params.agreement,
       params.definition,
       params.configuration
@@ -30,10 +33,19 @@ export function useDeedNFT(sdk: ProtocolSDK) {
     try {
       const totalSupply = await sdk.deedNFT.totalSupply();
       const deedPromises = Array.from({ length: Number(totalSupply) }, (_, i) => 
-        sdk.deedNFT.getDeedInfo(BigInt(i)).catch(() => null)
+        sdk.deedNFT.getDeedInfo(BigInt(i))
+          .then(([assetType, isValidated, operatingAgreement, definition, configuration, validator]) => ({
+            assetType,
+            isValidated,
+            operatingAgreement,
+            definition,
+            configuration,
+            validator
+          }))
+          .catch(() => null)
       );
       const deedInfos = await Promise.all(deedPromises);
-      setDeeds(deedInfos.filter(Boolean));
+      setDeeds(deedInfos.filter((deed): deed is DeedInfo => deed !== null));
     } finally {
       setLoading(false);
     }

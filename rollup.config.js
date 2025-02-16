@@ -10,7 +10,10 @@ const pkg = JSON.parse(readFileSync('./package.json', 'utf8'));
 
 const external = [
   ...Object.keys(pkg.dependencies || {}),
-  ...Object.keys(pkg.peerDependencies || {})
+  ...Object.keys(pkg.peerDependencies || {}),
+  'helia',
+  '@helia/unixfs',
+  'blockstore-core'
 ];
 
 export default [
@@ -31,7 +34,10 @@ export default [
     ],
     external,
     plugins: [
-      resolve(),
+      resolve({
+        preferBuiltins: true,
+        browser: true
+      }),
       commonjs(),
       json(),
       typescript({

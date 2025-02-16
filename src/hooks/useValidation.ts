@@ -1,13 +1,10 @@
-import { useState, useCallback } from 'react';
+import { useCallback } from 'react';
 import { ProtocolSDK } from '../ProtocolSDK';
-import { ValidatorInfo } from '../types';
+import { type Hash, type TransactionReceipt } from 'viem';
 
 export function useValidation(sdk: ProtocolSDK) {
-  const [validators, setValidators] = useState<ValidatorInfo[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  const validateDeed = useCallback(async (deedId: number, validatorAddress: string) => {
-    return sdk.validatorRegistry.validateDeed(deedId, validatorAddress);
+  const validateDeed = useCallback(async (deedId: bigint, validatorAddress: string) => {
+    return sdk.validatorRegistry.validate(deedId, validatorAddress);
   }, [sdk]);
 
   const registerValidator = useCallback(async (params: {
@@ -19,5 +16,13 @@ export function useValidation(sdk: ProtocolSDK) {
     return sdk.validatorRegistry.registerValidator(params);
   }, [sdk]);
 
-  return { validators, loading, validateDeed, registerValidator };
-} 
+  return { validateDeed, registerValidator };
+}
+
+export async function validateDeed(
+  sdk: ProtocolSDK, 
+  deedId: bigint,
+  validatorAddress: string
+): Promise<{ hash: Hash; wait: () => Promise<TransactionReceipt> }> {
+  return sdk.validatorRegistry.validate(deedId, validatorAddress);
+}

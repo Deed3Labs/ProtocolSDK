@@ -1,7 +1,9 @@
 import { 
   type PublicClient, 
   type WalletClient,
-  type Address
+  type Address,
+  type Hash,
+  type TransactionReceipt
 } from 'viem'
 import { BaseContract } from './BaseContract';
 import { ValidatorInfo, AssetType } from '../types';
@@ -21,7 +23,7 @@ export class ValidatorRegistryContract extends BaseContract {
     description: string;
     supportedAssetTypes: AssetType[];
     uri: string;
-  }) {
+  }): Promise<{ hash: Hash; wait: () => Promise<TransactionReceipt> }> {
     return this.executeTransaction('registerValidator', [
       params.name,
       params.description,
@@ -34,7 +36,7 @@ export class ValidatorRegistryContract extends BaseContract {
     return this.executeCall('getValidatorInfo', [validator]);
   }
 
-  async updateValidatorStatus(validator: string, isActive: boolean) {
+  async updateValidatorStatus(validator: string, isActive: boolean): Promise<{ hash: Hash; wait: () => Promise<TransactionReceipt> }> {
     return this.executeTransaction('updateValidatorStatus', [validator, isActive]);
   }
 
@@ -44,5 +46,9 @@ export class ValidatorRegistryContract extends BaseContract {
 
   async getValidatorsForAssetType(assetType: AssetType): Promise<string[]> {
     return this.executeCall('getValidatorsForAssetType', [assetType]);
+  }
+
+  async validate(deedId: bigint, validatorAddress: string): Promise<{ hash: Hash; wait: () => Promise<TransactionReceipt> }> {
+    return this.executeTransaction('validate', [deedId, validatorAddress]);
   }
 } 
