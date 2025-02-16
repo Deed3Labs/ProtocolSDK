@@ -11,6 +11,8 @@ export interface IDeedNFTContract {
     configuration: string
   ): Promise<{ hash: Hash; wait: () => Promise<TransactionReceipt> }>
   
+  totalSupply(): Promise<bigint>
+  
   getDeedInfo(tokenId: bigint): Promise<[
     AssetType,
     boolean,

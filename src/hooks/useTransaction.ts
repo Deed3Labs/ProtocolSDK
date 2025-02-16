@@ -13,13 +13,11 @@ export function useTransaction() {
     {
       onSuccess,
       onError,
-      onSubmitted,
-      onMining
+      onSubmitted
     }: {
       onSuccess?: (receipt: TransactionReceipt) => void;
       onError?: (error: ProtocolError) => void;
       onSubmitted?: (hash: Hash) => void;
-      onMining?: (confirmations: number) => void;
     } = {}
   ) => {
     try {
