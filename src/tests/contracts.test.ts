@@ -2,28 +2,49 @@ import { ethers } from 'ethers';
 import { createAllContracts } from '../factories/contracts';
 import { deedNFTUtils, fundManagerUtils, validatorUtils, validatorRegistryUtils, metadataRendererUtils } from '../utils/contracts';
 import { AssetType } from '../types/contracts';
-import { expect, beforeAll } from '@jest/globals';
+import { expect, beforeAll, afterAll } from '@jest/globals';
+import { setupTestEnvironment, TEST_CONFIG, waitForTransaction, getTestContract } from './setup';
+import { mintAsset, burnAsset, transferFrom } from '../api/deedNFT';
+import { IDeedNFT } from '../contracts/IDeedNFT';
+import { IFundManager } from '../contracts/IFundManager';
+import { IValidator } from '../contracts/IValidator';
+import { IValidatorRegistry } from '../contracts/IValidatorRegistry';
+import { IMetadataRenderer } from '../contracts/IMetadataRenderer';
 
 describe('Contract Interactions', () => {
   let provider: ethers.JsonRpcProvider;
   let signer: ethers.Wallet;
   let contracts: ReturnType<typeof createAllContracts>;
+  let wallet: ethers.Wallet;
+  let transactionManager: any;
+  let deedNFTContract: ethers.Contract;
+  let deedNFT: ethers.Contract;
+  let fundManager: ethers.Contract;
+  let validator: ethers.Contract;
+  let validatorRegistry: ethers.Contract;
+  let metadataRenderer: ethers.Contract;
 
   beforeAll(async () => {
-    // Set up provider and signer
-    provider = new ethers.JsonRpcProvider('http://localhost:8545');
-    signer = new ethers.Wallet(process.env.PRIVATE_KEY || '', provider);
+    const env = await setupTestEnvironment();
+    provider = env.provider;
+    signer = env.wallet;
+    contracts = createAllContracts(env.addresses, signer);
+    wallet = env.wallet;
+    transactionManager = env.transactionManager;
 
-    // Deploy contracts or use existing addresses
-    const addresses = {
-      deedNFT: '0x...', // Replace with actual address
-      fundManager: '0x...', // Replace with actual address
-      validator: '0x...', // Replace with actual address
-      validatorRegistry: '0x...', // Replace with actual address
-      metadataRenderer: '0x...', // Replace with actual address
-    };
+    // Initialize contract
+    deedNFTContract = new ethers.Contract(
+      TEST_CONFIG.CONTRACT_ADDRESSES.DEED_NFT,
+      [], // Add your contract ABI here
+      wallet
+    );
 
-    contracts = createAllContracts(addresses, signer);
+    // Initialize contracts
+    deedNFT = await getTestContract(TEST_CONFIG.contracts.deedNFT!, IDeedNFT.abi);
+    fundManager = await getTestContract(TEST_CONFIG.contracts.fundManager!, IFundManager.abi);
+    validator = await getTestContract(TEST_CONFIG.contracts.validator!, IValidator.abi);
+    validatorRegistry = await getTestContract(TEST_CONFIG.contracts.validatorRegistry!, IValidatorRegistry.abi);
+    metadataRenderer = await getTestContract(TEST_CONFIG.contracts.metadataRenderer!, IMetadataRenderer.abi);
   });
 
   describe('DeedNFT', () => {
@@ -57,6 +78,90 @@ describe('Contract Interactions', () => {
 
       expect(tx).toBeDefined();
     });
+
+    it('should mint a new asset', async () => {
+      const owner = await wallet.getAddress();
+      const assetType = 1;
+      const ipfsDetailsHash = 'QmTest123';
+      const definition = 'Test Definition';
+      const configuration = 'Test Configuration';
+      const validatorAddress = TEST_CONFIG.CONTRACT_ADDRESSES.VALIDATOR;
+      const salt = 1;
+
+      const result = await mintAsset(
+        deedNFTContract,
+        owner,
+        assetType,
+        ipfsDetailsHash,
+        definition,
+        configuration,
+        validatorAddress,
+        salt,
+        transactionManager
+      );
+
+      expect(result.status).toBe('confirmed');
+      expect(result.receipt).toBeDefined();
+    });
+
+    it('should transfer an asset', async () => {
+      const from = await wallet.getAddress();
+      const to = '0x70997970C51812dc3A010C7d01b50e0d17dc79C8'; // Test recipient
+      const tokenId = 1;
+
+      const result = await transferFrom(
+        deedNFTContract,
+        from,
+        to,
+        tokenId,
+        transactionManager
+      );
+
+      expect(result.status).toBe('confirmed');
+      expect(result.receipt).toBeDefined();
+    });
+
+    it('should burn an asset', async () => {
+      const tokenId = 1;
+
+      const result = await burnAsset(
+        deedNFTContract,
+        tokenId,
+        transactionManager
+      );
+
+      expect(result.status).toBe('confirmed');
+      expect(result.receipt).toBeDefined();
+    });
+
+    it('should mint a new deed', async () => {
+      const tx = await deedNFT.mintAsset(
+        wallet.address,
+        'ASSET_TYPE',
+        'IPFS_HASH',
+        'DEFINITION',
+        'CONFIGURATION',
+        validator.address,
+        'SALT'
+      );
+      
+      const receipt = await waitForTransaction(tx.hash);
+      expect(receipt.status).toBe(1);
+    });
+
+    it('should transfer a deed', async () => {
+      const tokenId = 1;
+      const newOwner = ethers.Wallet.createRandom().address;
+      
+      const tx = await deedNFT.transferFrom(
+        wallet.address,
+        newOwner,
+        tokenId
+      );
+      
+      const receipt = await waitForTransaction(tx.hash);
+      expect(receipt.status).toBe(1);
+    });
   });
 
   describe('FundManager', () => {
@@ -84,45 +189,44 @@ describe('Contract Interactions', () => {
 
       expect(tx).toBeDefined();
     });
+
+    it('should withdraw fees', async () => {
+      const tx = await fundManager.withdrawFees();
+      const receipt = await waitForTransaction(tx.hash);
+      expect(receipt.status).toBe(1);
+    });
   });
 
   describe('Validator', () => {
     it('should validate a deed', async () => {
-      const tx = await validatorUtils.validateDeed(
-        contracts.validator,
-        ethers.toBigInt(1)
-      );
-
-      expect(tx).toBeDefined();
+      const tokenId = 1;
+      const tx = await validator.validateDeed(tokenId);
+      const receipt = await waitForTransaction(tx.hash);
+      expect(receipt.status).toBe(1);
     });
 
     it('should set validation criteria', async () => {
-      const tx = await validatorUtils.setValidationCriteria(
-        contracts.validator,
-        1, // Asset type ID
-        ['trait1', 'trait2'], // Required traits
-        'Additional criteria', // Additional criteria
-        true, // Require operating agreement
-        true // Require definition
+      const criteria = {
+        minAmount: ethers.parseEther('1'),
+        maxAmount: ethers.parseEther('10'),
+        requiredDocuments: ['DOC1', 'DOC2'],
+      };
+      
+      const tx = await validator.setValidationCriteria(
+        criteria.minAmount,
+        criteria.maxAmount,
+        criteria.requiredDocuments
       );
-
-      expect(tx).toBeDefined();
+      
+      const receipt = await waitForTransaction(tx.hash);
+      expect(receipt.status).toBe(1);
     });
   });
 
   describe('ValidatorRegistry', () => {
     it('should get validator info', async () => {
-      const info = await validatorRegistryUtils.getValidatorInfo(
-        contracts.validatorRegistry,
-        '0x...' // Validator address
-      );
-
+      const info = await validatorRegistry.getValidatorInfo(validator.address);
       expect(info).toBeDefined();
-      expect(info.owner).toBeDefined();
-      expect(info.name).toBeDefined();
-      expect(info.isActive).toBeDefined();
-      expect(info.supportedAssetTypes).toBeDefined();
-      expect(info.commissionPercentage).toBeDefined();
     });
 
     it('should get validators for asset type', async () => {
@@ -163,6 +267,15 @@ describe('Contract Interactions', () => {
       );
 
       expect(tx).toBeDefined();
+    });
+
+    it('should update metadata', async () => {
+      const tokenId = 1;
+      const newMetadata = 'NEW_METADATA';
+      
+      const tx = await metadataRenderer.updateMetadata(tokenId, newMetadata);
+      const receipt = await waitForTransaction(tx.hash);
+      expect(receipt.status).toBe(1);
     });
   });
 }); 

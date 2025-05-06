@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import { IValidator } from '../contracts/IValidator.json';
+import { IValidator } from '../contracts/IValidator';
 
 export async function validateDeed(contract: ethers.Contract, tokenId: number): Promise<boolean> {
   return await contract.validateDeed(tokenId);

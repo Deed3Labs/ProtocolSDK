@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import { IFundManager } from '../contracts/IFundManager.json';
+import { IFundManager } from '../contracts/IFundManager';
 
 export async function mintDeedNFT(
   contract: ethers.Contract,

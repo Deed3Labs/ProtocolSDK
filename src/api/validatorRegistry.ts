@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import { IValidatorRegistry } from '../contracts/IValidatorRegistry.json';
+import { IValidatorRegistry } from '../contracts/IValidatorRegistry';
 
 export async function getValidatorOwner(contract: ethers.Contract, validatorContract: string): Promise<string> {
   return await contract.getValidatorOwner(validatorContract);
