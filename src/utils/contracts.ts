@@ -28,7 +28,7 @@ export const deedNFTUtils = {
     validatorAddress: string,
     salt: ethers.BigNumberish
   ): Promise<ethers.ContractTransaction> {
-    const tx = await contract.mintAsset(
+    return contract.mintAsset(
       owner,
       assetType,
       ipfsDetailsHash,
@@ -37,7 +37,6 @@ export const deedNFTUtils = {
       validatorAddress,
       salt
     );
-    return tx;
   },
 
   /**
@@ -54,8 +53,7 @@ export const deedNFTUtils = {
     to: string,
     tokenId: ethers.BigNumberish
   ): Promise<ethers.ContractTransaction> {
-    const tx = await contract.transferFrom(from, to, tokenId);
-    return tx;
+    return contract.transferFrom(from, to, tokenId);
   },
 
   /**
@@ -72,8 +70,7 @@ export const deedNFTUtils = {
     to: string,
     tokenId: ethers.BigNumberish
   ): Promise<ethers.ContractTransaction> {
-    const tx = await contract.safeTransferFrom(from, to, tokenId);
-    return tx;
+    return contract.safeTransferFrom(from, to, tokenId);
   }
 };
 
@@ -101,7 +98,7 @@ export const fundManagerUtils = {
     configuration: string,
     validatorAddress: string
   ): Promise<ethers.ContractTransaction> {
-    const tx = await contract.mintDeedNFT(
+    return contract.mintDeedNFT(
       owner,
       assetType,
       ipfsDetailsHash,
@@ -109,7 +106,6 @@ export const fundManagerUtils = {
       configuration,
       validatorAddress
     );
-    return tx;
   },
 
   /**
@@ -124,8 +120,7 @@ export const fundManagerUtils = {
     validator: string,
     token: string
   ): Promise<ethers.ContractTransaction> {
-    const tx = await contract.withdrawValidatorFees(validator, token);
-    return tx;
+    return contract.withdrawValidatorFees(validator, token);
   }
 };
 
@@ -143,8 +138,7 @@ export const validatorUtils = {
     contract: IValidator,
     tokenId: ethers.BigNumberish
   ): Promise<ethers.ContractTransaction> {
-    const tx = await contract.validateDeed(tokenId);
-    return tx;
+    return contract.validateDeed(tokenId);
   },
 
   /**
@@ -157,8 +151,7 @@ export const validatorUtils = {
     contract: IValidator,
     uri: string
   ): Promise<ethers.ContractTransaction> {
-    const tx = await contract.validateOperatingAgreement(uri);
-    return tx;
+    return contract.validateOperatingAgreement(uri);
   },
 
   /**
@@ -179,14 +172,13 @@ export const validatorUtils = {
     requireOperatingAgreement: boolean,
     requireDefinition: boolean
   ): Promise<ethers.ContractTransaction> {
-    const tx = await contract.setValidationCriteria(
+    return contract.setValidationCriteria(
       assetTypeId,
       requiredTraits,
       additionalCriteria,
       requireOperatingAgreement,
       requireDefinition
     );
-    return tx;
   }
 };
 

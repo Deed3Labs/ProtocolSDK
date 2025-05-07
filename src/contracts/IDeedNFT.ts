@@ -345,5 +345,99 @@ export const IDeedNFT = {
   deployedLinkReferences: {}
 };
 
-export type IDeedNFTInterface = ethers.Interface;
-export type IDeedNFTContract = ethers.Contract; 
+export interface IDeedNFTInterface extends ethers.Interface {
+  functions: {
+    mintAsset(
+      owner: string,
+      assetType: AssetType,
+      ipfsDetailsHash: string,
+      definition: string,
+      configuration: string,
+      validatorAddress: string,
+      salt: ethers.BigNumberish
+    ): Promise<ethers.ContractTransaction>;
+    
+    burnAsset(
+      tokenId: ethers.BigNumberish
+    ): Promise<ethers.ContractTransaction>;
+    
+    burnBatchAssets(
+      tokenIds: ethers.BigNumberish[]
+    ): Promise<ethers.ContractTransaction>;
+    
+    transferFrom(
+      from: string,
+      to: string,
+      tokenId: ethers.BigNumberish
+    ): Promise<ethers.ContractTransaction>;
+    
+    safeTransferFrom(
+      from: string,
+      to: string,
+      tokenId: ethers.BigNumberish
+    ): Promise<ethers.ContractTransaction>;
+    
+    updateMetadata(
+      tokenId: ethers.BigNumberish,
+      uri: string,
+      operatingAgreement: string,
+      definition: string,
+      configuration: string
+    ): Promise<ethers.ContractTransaction>;
+    
+    tokenURI(
+      tokenId: ethers.BigNumberish
+    ): Promise<string>;
+    
+    updateValidationStatus(
+      tokenId: ethers.BigNumberish,
+      isValid: boolean,
+      validatorAddress: string
+    ): Promise<ethers.ContractTransaction>;
+    
+    addMinter(
+      minter: string
+    ): Promise<ethers.ContractTransaction>;
+    
+    removeMinter(
+      minter: string
+    ): Promise<ethers.ContractTransaction>;
+    
+    hasRole(
+      role: string,
+      account: string
+    ): Promise<boolean>;
+    
+    setApprovedMarketplace(
+      marketplace: string,
+      approved: boolean
+    ): Promise<ethers.ContractTransaction>;
+    
+    isApprovedMarketplace(
+      marketplace: string
+    ): Promise<boolean>;
+    
+    setRoyaltyEnforcement(
+      enforced: boolean
+    ): Promise<ethers.ContractTransaction>;
+    
+    isRoyaltyEnforced(): Promise<boolean>;
+    
+    getTransferValidator(): Promise<string>;
+    
+    setTransferValidator(
+      validator: string
+    ): Promise<ethers.ContractTransaction>;
+    
+    ownerOf(
+      tokenId: ethers.BigNumberish
+    ): Promise<string>;
+    
+    getTraitValue(
+      tokenId: ethers.BigNumberish,
+      traitKey: string
+    ): Promise<string>;
+  };
+}
+
+export type IDeedNFTContract = ethers.Contract & IDeedNFTInterface; 
