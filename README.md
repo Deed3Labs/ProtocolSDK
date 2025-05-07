@@ -47,85 +47,208 @@ console.log('Transaction status:', result.status);
 
 ## Network Management
 
-The SDK is designed to be network-agnostic. Network management, including chain IDs and contract addresses, should be handled by your application. Here's an example of how to manage networks in your application:
+The SDK provides network-related types, utilities, and contract addresses for supported networks. Here's what's included:
 
 ```typescript
-// networks.ts
-export const NETWORKS = {
-  mainnet: {
-    chainId: 1,
-    rpcUrl: 'https://mainnet.infura.io/v3/YOUR_KEY',
-    contracts: {
-      deedNFT: '0x...',
-      fundManager: '0x...',
-      validator: '0x...',
-      validatorRegistry: '0x...',
-      metadataRenderer: '0x...'
-    }
-  },
-  goerli: {
-    chainId: 5,
-    rpcUrl: 'https://goerli.infura.io/v3/YOUR_KEY',
-    contracts: {
-      deedNFT: '0x...',
-      fundManager: '0x...',
-      validator: '0x...',
-      validatorRegistry: '0x...',
-      metadataRenderer: '0x...'
-    }
-  }
-} as const;
+import { ChainId, NetworkConfig } from '@protocol/sdk';
+import { getContractAddresses } from '@protocol/sdk/config/contracts';
 
-// networkManager.ts
-import { ethers } from 'ethers';
-import { TransactionManager } from '@protocol/sdk';
-
-export class NetworkManager {
-  private provider: ethers.Provider;
-  private transactionManager: TransactionManager;
-  private currentNetwork: keyof typeof NETWORKS;
-
-  constructor(initialNetwork: keyof typeof NETWORKS) {
-    this.currentNetwork = initialNetwork;
-    this.provider = new ethers.JsonRpcProvider(NETWORKS[initialNetwork].rpcUrl);
-    this.transactionManager = new TransactionManager(this.provider);
-  }
-
-  async switchNetwork(network: keyof typeof NETWORKS) {
-    // Update provider
-    this.provider = new ethers.JsonRpcProvider(NETWORKS[network].rpcUrl);
-    this.transactionManager = new TransactionManager(this.provider);
-    this.currentNetwork = network;
-  }
-
-  getContractAddress(contractName: keyof typeof NETWORKS['mainnet']['contracts']) {
-    return NETWORKS[this.currentNetwork].contracts[contractName];
-  }
-
-  getProvider() {
-    return this.provider;
-  }
-
-  getTransactionManager() {
-    return this.transactionManager;
-  }
+// Types provided by the SDK
+interface NetworkConfig {
+  chainId: number;
+  provider: ethers.Provider;
+  contracts: {
+    DeedNFT: string;
+    FundManager: string;
+    Validator: string;
+    ValidatorRegistry: string;
+    MetadataRenderer: string;
+  };
 }
 
-// Usage example
-const networkManager = new NetworkManager('goerli');
+// Common chain IDs for reference
+enum ChainId {
+  MAINNET = 1,
+  ARBITRUM = 42161,
+  BASE = 8453,
+  BASE_SEPOLIA = 84532
+}
 
-// Switch networks
-await networkManager.switchNetwork('mainnet');
+// Get contract addresses for a network
+const addresses = getContractAddresses(ChainId.BASE_SEPOLIA);
+```
 
-// Get contract address
-const deedNFTAddress = networkManager.getContractAddress('deedNFT');
+### Application-Level Network Management
 
-// Initialize contract
-const deedNFT = new ethers.Contract(
-  deedNFTAddress,
-  deedNFTABI,
-  signer
+Your application should handle:
+- RPC provider configuration
+- Network switching logic
+- Wallet connection management
+- Network validation
+
+Example application implementation:
+
+```typescript
+import { ChainId, NetworkConfig } from '@protocol/sdk';
+import { getContractAddresses } from '@protocol/sdk/config/contracts';
+
+// Your application's RPC configuration
+const RPC_URLS = {
+  [ChainId.BASE_SEPOLIA]: 'https://sepolia.base.org',
+  [ChainId.BASE]: 'https://mainnet.base.org'
+};
+
+// Your application's network manager
+class AppNetworkManager {
+  private currentChainId: ChainId;
+  
+  constructor(initialChainId: ChainId) {
+    this.currentChainId = initialChainId;
+  }
+
+  async switchNetwork(chainId: ChainId) {
+    // Your network switching logic
+  }
+
+  getNetworkConfig(): NetworkConfig {
+    return {
+      chainId: this.currentChainId,
+      provider: new ethers.JsonRpcProvider(RPC_URLS[this.currentChainId]),
+      contracts: getContractAddresses(this.currentChainId)
+    };
+  }
+}
+```
+
+## Network Configuration
+
+The SDK is network-agnostic and requires the application to provide network configuration. Here's how to configure networks:
+
+```typescript
+import { ethers } from 'ethers';
+
+// Configure your network settings
+const networkConfig = {
+  chainId: 84532, // base-sepolia
+  provider: new ethers.JsonRpcProvider('https://sepolia.base.org'),
+  contracts: {
+    DeedNFT: '0x...',
+    FundManager: '0x...',
+    Validator: '0x...',
+    ValidatorRegistry: '0x...',
+    MetadataRenderer: '0x...'
+  }
+};
+
+// Initialize the SDK with your network config
+const sdk = new Protocol.SDK({
+  network: networkConfig,
+  signer: wallet // Your ethers signer
+});
+```
+
+### Supported Networks
+
+The SDK can work with any EVM-compatible network. Here are some commonly used networks:
+
+- Base Sepolia (Chain ID: 84532)
+- Base Mainnet (Chain ID: 8453)
+- Ethereum Mainnet (Chain ID: 1)
+- Arbitrum One (Chain ID: 42161)
+
+### Network Switching
+
+The SDK does not handle network switching internally. Your application should:
+
+1. Listen for network changes in the user's wallet
+2. Update the provider and contract instances accordingly
+3. Validate that the network is supported by your application
+
+Example network switching:
+
+```typescript
+// Handle network change
+provider.on("network", (newNetwork, oldNetwork) => {
+  // Handle network change in your application
+  // Reinitialize SDK with new network if needed
+});
+```
+
+## Network Monitoring
+
+The SDK provides a `NetworkMonitor` class to track network health and status:
+
+```typescript
+import { NetworkMonitor } from '@protocol/sdk';
+
+const monitor = new NetworkMonitor(provider, {
+  pollingInterval: 5000,
+  healthThreshold: 0.8,
+});
+
+// Start monitoring
+await monitor.start();
+
+// Listen for status changes
+monitor.on('statusChange', (status) => {
+  console.log('Network status:', status);
+});
+
+// Check if network is healthy
+const isHealthy = await monitor.isHealthy();
+
+// Wait for network to be ready
+await monitor.waitForReady();
+```
+
+## Transaction Management
+
+The SDK includes a `TransactionQueue` for managing multiple transactions:
+
+```typescript
+import { TransactionQueue } from '@protocol/sdk';
+
+const queue = new TransactionQueue(provider, signer, {
+  maxConcurrent: 3,
+  maxRetries: 3,
+  retryDelay: 1000,
+  confirmations: 1,
+  timeout: 300000,
+});
+
+// Add transaction to queue
+const hash = await queue.add({
+  from: '0x...',
+  to: '0x...',
+  value: ethers.parseEther('1.0'),
+  data: '0x...',
+  nonce: 1,
+  gasLimit: 21000n,
+});
+
+// Get transaction status
+const status = await queue.getStatus(hash);
+
+// Get all pending transactions
+const pending = queue.getPending();
+```
+
+## Contract Management
+
+The SDK provides a clean interface for working with contracts:
+
+```typescript
+import { ContractFactory, IDeedNFT } from '@protocol/sdk';
+
+// Create contract instance
+const deedNFT = await ContractFactory.createContract<IDeedNFT>(
+  provider,
+  contractAddress,
+  deedNFTAbi
 );
+
+// Use contract
+const balance = await deedNFT.contract.balanceOf(address);
 ```
 
 ## API Documentation

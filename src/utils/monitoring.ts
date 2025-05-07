@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
 import { TransactionResult } from './transactionManager';
-import { SDKError, TransactionError, ErrorCodes } from './errors';
+import { SDKError, TransactionError, ErrorCodes } from '../types/errors';
 
 export interface MonitoringOptions {
   maxRetries?: number;

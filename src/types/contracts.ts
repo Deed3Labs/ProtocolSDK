@@ -170,6 +170,15 @@ export interface IDeedNFT extends ethers.BaseContract {
    * @returns Promise resolving to the transaction
    */
   setTransferValidator(validator: string): Promise<ethers.ContractTransaction>;
+
+  getDeedInfo(tokenId: ethers.BigNumberish): Promise<{
+    assetType: AssetType;
+    isValidated: boolean;
+    operatingAgreement: string;
+    definition: string;
+    configuration: string;
+    validator: string;
+  }>;
 }
 
 /**

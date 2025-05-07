@@ -1,4 +1,4 @@
-import { SDKError, ErrorCodes } from './errors';
+import { SDKError, ErrorCodes } from '../types/errors';
 
 export interface RateLimitOptions {
   maxRequests: number;

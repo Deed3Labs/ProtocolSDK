@@ -28,13 +28,13 @@ describe('Contract Interactions', () => {
     const env = await setupTestEnvironment();
     provider = env.provider;
     signer = env.wallet;
-    contracts = createAllContracts(env.addresses, signer);
+    contracts = createAllContracts(TEST_CONFIG.contracts, signer);
     wallet = env.wallet;
     transactionManager = env.transactionManager;
 
     // Initialize contract
     deedNFTContract = new ethers.Contract(
-      TEST_CONFIG.CONTRACT_ADDRESSES.DEED_NFT,
+      TEST_CONFIG.contracts.deedNFT!,
       [], // Add your contract ABI here
       wallet
     );
@@ -85,7 +85,7 @@ describe('Contract Interactions', () => {
       const ipfsDetailsHash = 'QmTest123';
       const definition = 'Test Definition';
       const configuration = 'Test Configuration';
-      const validatorAddress = TEST_CONFIG.CONTRACT_ADDRESSES.VALIDATOR;
+      const validatorAddress = TEST_CONFIG.contracts.validator;
       const salt = 1;
 
       const result = await mintAsset(

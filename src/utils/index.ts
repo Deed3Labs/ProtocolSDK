@@ -1,4 +1,6 @@
 import { ethers } from 'ethers';
+import { TransactionManager } from './transactionManager';
+import { MonitoringSystem } from './monitoring';
 
 export function formatAddress(address: string): string {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -63,4 +65,6 @@ export function formatAmount(amount: bigint, decimals: number = 18): string {
 
 export function parseAmount(amount: string, decimals: number = 18): bigint {
   return ethers.parseUnits(amount, decimals);
-} 
+}
+
+export { TransactionManager, MonitoringSystem }; 
