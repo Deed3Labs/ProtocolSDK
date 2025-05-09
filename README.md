@@ -83,7 +83,7 @@ The SDK is organized into several key components:
 
 1. **DeedNFT**
    - Asset minting and burning
-   - Metadata management
+   - Dynamic trait management
    - Transfer validation
    - Royalty enforcement
 
@@ -108,7 +108,7 @@ The SDK is organized into several key components:
 5. **MetadataRenderer**
    - Token metadata generation
    - URI management
-   - Metadata validation
+   - Custom metadata storage
    - Dynamic content rendering
 
 ## Network Management
