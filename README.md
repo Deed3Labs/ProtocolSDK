@@ -105,6 +105,12 @@ The SDK is organized into several key components:
    - Asset type validation
    - Validator information
 
+5. **MetadataRenderer**
+   - Token metadata generation
+   - URI management
+   - Metadata validation
+   - Dynamic content rendering
+
 ## Network Management
 
 The SDK provides network-related types, utilities, and contract addresses for supported networks. Here's what's included:
