@@ -1,3 +1,12 @@
+/**
+ * @file SDK Test Suite
+ * @description This test suite verifies the functionality of the ProtocolSDK class.
+ * It tests initialization, configuration, contract interactions, and error handling.
+ * The suite uses mocked dependencies to isolate the SDK's functionality.
+ * 
+ * @module SDKTest
+ */
+
 import { expect, jest } from '@jest/globals';
 import { ethers } from 'ethers';
 import { ProtocolSDK } from '../index';
@@ -8,7 +17,9 @@ import { networkConfig, TEST_CONFIG } from './setup';
 import { TEST_ABIS } from './constants/abis';
 import { ValidationSystem } from '../utils/validation';
 
-// Mock ValidationSystem
+/**
+ * @description Mocks the ValidationSystem module to control validation behavior in tests
+ */
 jest.mock('../utils/validation', () => ({
   ValidationSystem: {
     validateAddress: jest.fn(),
@@ -28,6 +39,9 @@ jest.mock('../utils/validation', () => ({
   }
 }));
 
+/**
+ * @description Test suite for the ProtocolSDK class
+ */
 describe('ProtocolSDK', () => {
   let sdk: ProtocolSDK;
   let mockProvider: ethers.Provider;
@@ -36,6 +50,13 @@ describe('ProtocolSDK', () => {
   const validAddress = '0x1234567890123456789012345678901234567890';
   const validIpfsHash = 'QmWWQSuPMS6aXCbZKpEjPHPUZN2NjB3YrhJTHsV4X3vb2t';
 
+  /**
+   * @description Sets up test environment before each test
+   * - Resets all mocks
+   * - Configures validation mocks
+   * - Creates mock provider, signer, and contract instances
+   * - Sets up mock transaction receipts and responses
+   */
   beforeEach(() => {
     // Reset mocks
     jest.clearAllMocks();
@@ -87,6 +108,9 @@ describe('ProtocolSDK', () => {
       provider: undefined
     } as unknown as ethers.TransactionReceipt;
 
+    /**
+     * @description Mock provider class that simulates blockchain network behavior
+     */
     class MockProvider extends ethers.JsonRpcProvider {
       constructor() {
         super();
@@ -224,7 +248,9 @@ describe('ProtocolSDK', () => {
 
     jest.spyOn(mockContract, 'tokenURI').mockResolvedValue(validIpfsHash);
 
-    // Mock network monitor
+    /**
+     * @description Mock network monitor for testing network status and monitoring
+     */
     const mockNetworkMonitor = {
       start: jest.fn().mockImplementation(() => Promise.resolve()),
       stop: jest.fn(),
@@ -237,7 +263,9 @@ describe('ProtocolSDK', () => {
       }))
     };
 
-    // Mock transaction queue
+    /**
+     * @description Mock transaction queue for testing transaction management
+     */
     const mockTransactionQueue = {
       add: jest.fn().mockImplementation(() => Promise.resolve('0x123')),
       getStatus: jest.fn().mockImplementation(() => Promise.resolve({

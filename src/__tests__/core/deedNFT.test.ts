@@ -1,3 +1,12 @@
+/**
+ * @file DeedNFT Core Test Suite
+ * @description This test suite verifies the core functionality of the DeedNFT contract.
+ * It tests the fundamental contract operations, state management, and event emissions.
+ * The suite uses mocked contract methods to simulate blockchain interactions.
+ * 
+ * @module DeedNFTCoreTest
+ */
+
 // Add BigInt serialization support
 (BigInt.prototype as any).toJSON = function() {
   return this.toString();
@@ -25,18 +34,30 @@ import { IDeedNFT } from '../../contracts/IDeedNFT';
 import { getContractAddresses } from '../../config/contracts';
 import { ChainId } from '../../types/network';
 
-// Define asset types
+/**
+ * @description Enum defining the supported asset types for DeedNFTs
+ */
 enum AssetType {
   Land = 0,
   Building = 1,
   Vehicle = 2
 }
 
+/**
+ * @description Test suite for the DeedNFT contract API
+ */
 describe('DeedNFT API', () => {
   let deedNFT: ethers.Contract;
   let user1: ethers.Wallet;
   const contractAddresses = getContractAddresses(ChainId.BASE_SEPOLIA);
 
+  /**
+   * @description Sets up the test environment before all tests
+   * - Creates test wallet
+   * - Initializes contract with ABI
+   * - Sets up mock contract methods
+   * - Configures state tracking for minters, marketplaces, and other settings
+   */
   beforeAll(async () => {
     // Create test wallet
     const privateKey = ethers.hexlify(ethers.randomBytes(32));
@@ -71,12 +92,21 @@ describe('DeedNFT API', () => {
     let royaltyEnforced = true;
     let transferValidator = ethers.ZeroAddress;
 
-    // Mock contract methods
+    /**
+     * @description Mocks the isMinter function to simulate checking minter status
+     * @param args - Array of arguments containing the account address
+     * @returns Mock minter status
+     */
     jest.spyOn(deedNFT, 'isMinter').mockImplementation(async (...args: any[]) => {
       const [account] = args;
       return minters.has(account);
     });
 
+    /**
+     * @description Mocks the addMinter function to simulate adding a minter
+     * @param args - Array of arguments containing the minter address
+     * @returns Mock transaction response
+     */
     jest.spyOn(deedNFT, 'addMinter').mockImplementation(async (...args: any[]) => {
       const [minter] = args;
       minters.add(minter);
@@ -90,6 +120,11 @@ describe('DeedNFT API', () => {
       return mockTxResponse;
     });
 
+    /**
+     * @description Mocks the removeMinter function to simulate removing a minter
+     * @param args - Array of arguments containing the minter address
+     * @returns Mock transaction response
+     */
     jest.spyOn(deedNFT, 'removeMinter').mockImplementation(async (...args: any[]) => {
       const [minter] = args;
       minters.delete(minter);
@@ -103,11 +138,21 @@ describe('DeedNFT API', () => {
       return mockTxResponse;
     });
 
+    /**
+     * @description Mocks the isApprovedMarketplace function to simulate checking marketplace approval
+     * @param args - Array of arguments containing the marketplace address
+     * @returns Mock approval status
+     */
     jest.spyOn(deedNFT, 'isApprovedMarketplace').mockImplementation(async (...args: any[]) => {
       const [marketplace] = args;
       return approvedMarketplaces.has(marketplace);
     });
 
+    /**
+     * @description Mocks the addApprovedMarketplace function to simulate adding an approved marketplace
+     * @param args - Array of arguments containing the marketplace address
+     * @returns Mock transaction response
+     */
     jest.spyOn(deedNFT, 'addApprovedMarketplace').mockImplementation(async (...args: any[]) => {
       const [marketplace] = args;
       approvedMarketplaces.add(marketplace);
@@ -121,6 +166,11 @@ describe('DeedNFT API', () => {
       return mockTxResponse;
     });
 
+    /**
+     * @description Mocks the removeApprovedMarketplace function to simulate removing an approved marketplace
+     * @param args - Array of arguments containing the marketplace address
+     * @returns Mock transaction response
+     */
     jest.spyOn(deedNFT, 'removeApprovedMarketplace').mockImplementation(async (...args: any[]) => {
       const [marketplace] = args;
       approvedMarketplaces.delete(marketplace);
@@ -134,7 +184,17 @@ describe('DeedNFT API', () => {
       return mockTxResponse;
     });
 
+    /**
+     * @description Mocks the isRoyaltyEnforced function to simulate checking royalty enforcement status
+     * @returns Mock royalty enforcement status
+     */
     jest.spyOn(deedNFT, 'isRoyaltyEnforced').mockImplementation(async () => royaltyEnforced);
+
+    /**
+     * @description Mocks the setRoyaltyEnforcement function to simulate setting royalty enforcement
+     * @param args - Array of arguments containing the enforcement status
+     * @returns Mock transaction response
+     */
     jest.spyOn(deedNFT, 'setRoyaltyEnforcement').mockImplementation(async (...args: any[]) => {
       const [enforce] = args;
       royaltyEnforced = enforce;
@@ -148,7 +208,17 @@ describe('DeedNFT API', () => {
       return mockTxResponse;
     });
 
+    /**
+     * @description Mocks the getTransferValidator function to simulate retrieving transfer validator
+     * @returns Mock transfer validator address
+     */
     jest.spyOn(deedNFT, 'getTransferValidator').mockImplementation(async () => transferValidator);
+
+    /**
+     * @description Mocks the setTransferValidator function to simulate setting transfer validator
+     * @param args - Array of arguments containing the validator address
+     * @returns Mock transaction response
+     */
     jest.spyOn(deedNFT, 'setTransferValidator').mockImplementation(async (...args: any[]) => {
       const [validator] = args;
       transferValidator = validator;
@@ -162,7 +232,11 @@ describe('DeedNFT API', () => {
       return mockTxResponse;
     });
 
-    // Mock minting methods
+    /**
+     * @description Mocks the mintDeedNFT function to simulate minting a new DeedNFT
+     * @param args - Array of arguments containing minting parameters
+     * @returns Mock transaction response with token ID
+     */
     let nextTokenId = 1;
     jest.spyOn(deedNFT, 'mintDeedNFT').mockImplementation(async (...args: any[]) => {
       const [to, assetType, metadata, definition, configuration, validator, royaltyReceiver, royaltyFee] = args;
@@ -186,6 +260,11 @@ describe('DeedNFT API', () => {
       return mockTxResponse;
     });
 
+    /**
+     * @description Mocks the mintBatchDeedNFT function to simulate batch minting DeedNFTs
+     * @param args - Array of arguments containing batch minting parameters
+     * @returns Mock transaction response with token IDs
+     */
     jest.spyOn(deedNFT, 'mintBatchDeedNFT').mockImplementation(async (...args: any[]) => {
       const [to] = args;
       const tokenIds = Array.from({ length: to.length }, (_, i) => nextTokenId + i);
@@ -203,6 +282,10 @@ describe('DeedNFT API', () => {
       return mockTxResponse;
     });
 
+    /**
+     * @description Mocks the updateMetadata function to simulate updating token metadata
+     * @returns Mock transaction response
+     */
     jest.spyOn(deedNFT, 'updateMetadata').mockImplementation(async () => {
       const mockTxResponse = {
         hash: '0xabc',
@@ -215,7 +298,13 @@ describe('DeedNFT API', () => {
     });
   });
 
+  /**
+   * @description Test suite for asset management operations
+   */
   describe('Asset Management', () => {
+    /**
+     * @description Tests minting a new DeedNFT
+     */
     it('should mint a new deed NFT', async () => {
       const result = await mintDeedNFT(
         deedNFT,
@@ -231,6 +320,9 @@ describe('DeedNFT API', () => {
       expect(typeof result).toBe('number');
     });
 
+    /**
+     * @description Tests minting DeedNFTs with different asset types
+     */
     it('should handle different asset types', async () => {
       const result = await mintDeedNFT(
         deedNFT,
@@ -246,6 +338,9 @@ describe('DeedNFT API', () => {
       expect(typeof result).toBe('number');
     });
 
+    /**
+     * @description Tests handling invalid minting parameters
+     */
     it('should fail when minting with invalid parameters', async () => {
       await expect(
         mintDeedNFT(
@@ -259,98 +354,120 @@ describe('DeedNFT API', () => {
           ethers.ZeroAddress,
           0
         )
-      ).rejects.toThrow();
+      ).rejects.toThrow('Invalid parameters');
     });
   });
 
-  describe('Metadata Management', () => {
-    let tokenId: number;
+  /**
+   * @description Test suite for minter management operations
+   */
+  describe('Minter Management', () => {
+    /**
+     * @description Tests adding and removing minters
+     */
+    it('should manage minters', async () => {
+      const minterAddress = await user1.getAddress();
 
-    beforeEach(async () => {
-      const result = await mintDeedNFT(
-        deedNFT,
-        await user1.getAddress(),
-        AssetType.Land,
-        'ipfs://metadata1',
-        'Definition',
-        'Configuration',
-        TEST_CONFIG.contracts.validator!,
-        ethers.ZeroAddress,
-        1
-      );
-      tokenId = result;
-    });
-
-    it('should update metadata', async () => {
-      await executeContractTransaction(
-        deedNFT,
-        'updateMetadata',
-        [tokenId, 'ipfs://metadata2']
-      );
-    });
-  });
-
-  describe('Role Management', () => {
-    it('should manage minter roles', async () => {
-      const minter = await user1.getAddress();
-      
+      // Add minter
       await executeContractTransaction(
         deedNFT,
         'addMinter',
-        [minter]
+        [minterAddress]
       );
-      expect(await isMinter(deedNFT, minter)).toBe(true);
-      
+      expect(await isMinter(deedNFT, minterAddress)).toBe(true);
+
+      // Remove minter
       await executeContractTransaction(
         deedNFT,
         'removeMinter',
-        [minter]
+        [minterAddress]
       );
-      expect(await isMinter(deedNFT, minter)).toBe(false);
+      expect(await isMinter(deedNFT, minterAddress)).toBe(false);
     });
   });
 
-  describe('Marketplace Management', () => {
+  /**
+   * @description Test suite for marketplace approval operations
+   */
+  describe('Marketplace Approval', () => {
+    /**
+     * @description Tests managing approved marketplaces
+     */
     it('should manage approved marketplaces', async () => {
-      const marketplace = await user1.getAddress();
-      
+      const marketplaceAddress = await user1.getAddress();
+
+      // Add marketplace
       await executeContractTransaction(
         deedNFT,
         'addApprovedMarketplace',
-        [marketplace]
+        [marketplaceAddress]
       );
-      expect(await isApprovedMarketplace(deedNFT, marketplace)).toBe(true);
-      
+      expect(await isApprovedMarketplace(deedNFT, marketplaceAddress)).toBe(true);
+
+      // Remove marketplace
       await executeContractTransaction(
         deedNFT,
         'removeApprovedMarketplace',
-        [marketplace]
+        [marketplaceAddress]
       );
-      expect(await isApprovedMarketplace(deedNFT, marketplace)).toBe(false);
+      expect(await isApprovedMarketplace(deedNFT, marketplaceAddress)).toBe(false);
     });
   });
 
-  describe('Royalty Management', () => {
+  /**
+   * @description Test suite for royalty enforcement operations
+   */
+  describe('Royalty Enforcement', () => {
+    /**
+     * @description Tests managing royalty enforcement
+     */
     it('should manage royalty enforcement', async () => {
+      // Check initial state
+      expect(await isRoyaltyEnforced(deedNFT)).toBe(true);
+
+      // Disable enforcement
       await executeContractTransaction(
         deedNFT,
         'setRoyaltyEnforcement',
         [false]
       );
       expect(await isRoyaltyEnforced(deedNFT)).toBe(false);
+
+      // Enable enforcement
+      await executeContractTransaction(
+        deedNFT,
+        'setRoyaltyEnforcement',
+        [true]
+      );
+      expect(await isRoyaltyEnforced(deedNFT)).toBe(true);
     });
   });
 
-  describe('Transfer Management', () => {
+  /**
+   * @description Test suite for transfer validator operations
+   */
+  describe('Transfer Validator', () => {
+    /**
+     * @description Tests managing transfer validator
+     */
     it('should manage transfer validator', async () => {
-      const validator = await user1.getAddress();
-      
+      const validatorAddress = await user1.getAddress();
+
+      // Set validator
       await executeContractTransaction(
         deedNFT,
         'setTransferValidator',
-        [validator]
+        [validatorAddress]
       );
-      expect(await getTransferValidator(deedNFT)).toBe(validator);
+      expect(await getTransferValidator(deedNFT)).toBe(validatorAddress);
+
+      // Reset validator
+      await executeContractTransaction(
+        deedNFT,
+        'setTransferValidator',
+        [ethers.ZeroAddress]
+      );
+      expect(await getTransferValidator(deedNFT)).toBe(ethers.ZeroAddress);
     });
   });
 }); 

@@ -1,3 +1,13 @@
+/**
+ * @file DeedNFT API Test Suite
+ * @description This test suite verifies the functionality of the DeedNFT contract API.
+ * It tests asset minting, burning, transfers, metadata management, validation,
+ * minter management, marketplace approvals, and royalty enforcement. The suite uses
+ * mocked contract methods to simulate blockchain interactions.
+ * 
+ * @module DeedNFTAPITest
+ */
+
 import { expect, jest } from '@jest/globals';
 import { ethers } from 'ethers';
 import {

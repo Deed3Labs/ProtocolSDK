@@ -10,6 +10,10 @@ A TypeScript SDK for interacting with Protocol Contracts, including DeedNFT, Fun
 - ✅ Input validation and error handling
 - 🔒 Rate limiting and security features
 - 📝 Comprehensive documentation
+- 🧪 Extensive test coverage
+- 🔍 Detailed logging and debugging
+- 🔐 Secure key management
+- 🌐 Multi-network support
 
 ## Installation
 
@@ -45,6 +49,62 @@ const result = await transactionManager.sendTransaction(tx);
 console.log('Transaction status:', result.status);
 ```
 
+## Architecture
+
+The SDK is organized into several key components:
+
+### Core Components
+
+1. **Transaction Management**
+   - Transaction queue management
+   - Gas price optimization
+   - Transaction confirmation handling
+   - Retry logic for failed transactions
+
+2. **Validation System**
+   - Input parameter validation
+   - Contract state validation
+   - Gas price validation
+   - Contract deployment validation
+
+3. **Monitoring System**
+   - Event monitoring
+   - Transaction status tracking
+   - Network health monitoring
+   - Error tracking and reporting
+
+4. **Rate Limiting**
+   - Request throttling
+   - Rate limit tracking
+   - Custom rate limit rules
+   - Rate limit recovery
+
+### Contract Interfaces
+
+1. **DeedNFT**
+   - Asset minting and burning
+   - Metadata management
+   - Transfer validation
+   - Royalty enforcement
+
+2. **FundManager**
+   - Fee management
+   - Commission handling
+   - Fund distribution
+   - Validator rewards
+
+3. **Validator**
+   - Validation operations
+   - Operating agreements
+   - Token management
+   - Fee collection
+
+4. **ValidatorRegistry**
+   - Validator registration
+   - Status management
+   - Asset type validation
+   - Validator information
+
 ## Network Management
 
 The SDK provides network-related types, utilities, and contract addresses for supported networks. Here's what's included:
@@ -78,51 +138,16 @@ enum ChainId {
 const addresses = getContractAddresses(ChainId.BASE_SEPOLIA);
 ```
 
-### Application-Level Network Management
+### Supported Networks
 
-Your application should handle:
-- RPC provider configuration
-- Network switching logic
-- Wallet connection management
-- Network validation
+The SDK supports the following networks:
 
-Example application implementation:
+- Base Sepolia (Chain ID: 84532)
+- Base Mainnet (Chain ID: 8453)
+- Ethereum Mainnet (Chain ID: 1)
+- Arbitrum One (Chain ID: 42161)
 
-```typescript
-import { ChainId, NetworkConfig } from '@protocol/sdk';
-import { getContractAddresses } from '@protocol/sdk/config/contracts';
-
-// Your application's RPC configuration
-const RPC_URLS = {
-  [ChainId.BASE_SEPOLIA]: 'https://sepolia.base.org',
-  [ChainId.BASE]: 'https://mainnet.base.org'
-};
-
-// Your application's network manager
-class AppNetworkManager {
-  private currentChainId: ChainId;
-  
-  constructor(initialChainId: ChainId) {
-    this.currentChainId = initialChainId;
-  }
-
-  async switchNetwork(chainId: ChainId) {
-    // Your network switching logic
-  }
-
-  getNetworkConfig(): NetworkConfig {
-    return {
-      chainId: this.currentChainId,
-      provider: new ethers.JsonRpcProvider(RPC_URLS[this.currentChainId]),
-      contracts: getContractAddresses(this.currentChainId)
-    };
-  }
-}
-```
-
-## Network Configuration
-
-The SDK is network-agnostic and requires the application to provide network configuration. Here's how to configure networks:
+### Network Configuration
 
 ```typescript
 import { ethers } from 'ethers';
@@ -147,196 +172,53 @@ const sdk = new Protocol.SDK({
 });
 ```
 
-### Supported Networks
+## Testing
 
-The SDK can work with any EVM-compatible network. Here are some commonly used networks:
+The SDK includes comprehensive test suites for both API and core functionality:
 
-- Base Sepolia (Chain ID: 84532)
-- Base Mainnet (Chain ID: 8453)
-- Ethereum Mainnet (Chain ID: 1)
-- Arbitrum One (Chain ID: 42161)
+### Test Structure
 
-### Network Switching
-
-The SDK does not handle network switching internally. Your application should:
-
-1. Listen for network changes in the user's wallet
-2. Update the provider and contract instances accordingly
-3. Validate that the network is supported by your application
-
-Example network switching:
-
-```typescript
-// Handle network change
-provider.on("network", (newNetwork, oldNetwork) => {
-  // Handle network change in your application
-  // Reinitialize SDK with new network if needed
-});
+```
+src/__tests__/
+├── api/                    # API-level tests
+│   ├── deedNFT.test.ts
+│   ├── fundManager.test.ts
+│   ├── metadataRenderer.test.ts
+│   ├── validator.test.ts
+│   └── validatorRegistry.test.ts
+└── core/                   # Core functionality tests
+    ├── deedNFT.test.ts
+    ├── fundManager.test.ts
+    ├── metadataRenderer.test.ts
+    ├── validator.test.ts
+    └── validatorRegistry.test.ts
 ```
 
-## Network Monitoring
+### Running Tests
 
-The SDK provides a `NetworkMonitor` class to track network health and status:
+```bash
+# Run all tests
+npm test
 
-```typescript
-import { NetworkMonitor } from '@protocol/sdk';
+# Run tests with coverage
+npm run test:coverage
 
-const monitor = new NetworkMonitor(provider, {
-  pollingInterval: 5000,
-  healthThreshold: 0.8,
-});
+# Run specific test suite
+npm test -- -t "DeedNFT"
 
-// Start monitoring
-await monitor.start();
-
-// Listen for status changes
-monitor.on('statusChange', (status) => {
-  console.log('Network status:', status);
-});
-
-// Check if network is healthy
-const isHealthy = await monitor.isHealthy();
-
-// Wait for network to be ready
-await monitor.waitForReady();
+# Run tests in watch mode
+npm run test:watch
 ```
 
-## Transaction Management
+### Test Coverage
 
-The SDK includes a `TransactionQueue` for managing multiple transactions:
-
-```typescript
-import { TransactionQueue } from '@protocol/sdk';
-
-const queue = new TransactionQueue(provider, signer, {
-  maxConcurrent: 3,
-  maxRetries: 3,
-  retryDelay: 1000,
-  confirmations: 1,
-  timeout: 300000,
-});
-
-// Add transaction to queue
-const hash = await queue.add({
-  from: '0x...',
-  to: '0x...',
-  value: ethers.parseEther('1.0'),
-  data: '0x...',
-  nonce: 1,
-  gasLimit: 21000n,
-});
-
-// Get transaction status
-const status = await queue.getStatus(hash);
-
-// Get all pending transactions
-const pending = queue.getPending();
-```
-
-## Contract Management
-
-The SDK provides a clean interface for working with contracts:
-
-```typescript
-import { ContractFactory, IDeedNFT } from '@protocol/sdk';
-
-// Create contract instance
-const deedNFT = await ContractFactory.createContract<IDeedNFT>(
-  provider,
-  contractAddress,
-  deedNFTAbi
-);
-
-// Use contract
-const balance = await deedNFT.contract.balanceOf(address);
-```
-
-## API Documentation
-
-### TransactionManager
-
-Manages transaction sending and monitoring.
-
-```typescript
-const transactionManager = new TransactionManager(provider);
-
-// Send transaction
-const result = await transactionManager.sendTransaction(tx);
-
-// Get transaction status
-const status = await transactionManager.getTransactionStatus(txHash);
-
-// Get gas price
-const gasPrice = await transactionManager.getGasPrice();
-```
-
-### MonitoringSystem
-
-Monitors transactions and contract events.
-
-```typescript
-const monitoringSystem = new MonitoringSystem(provider, {
-  maxRetries: 3,
-  retryDelay: 1000,
-  timeout: 30000,
-  confirmations: 1,
-});
-
-// Monitor transaction
-const result = await monitoringSystem.monitorTransaction(txHash);
-
-// Monitor contract events
-monitoringSystem.monitorContractEvent(contract, 'Transfer', (event) => {
-  console.log('Transfer event:', event);
-});
-
-// Get monitoring events
-const events = monitoringSystem.getEvents();
-```
-
-### ValidationSystem
-
-Validates input parameters and contract state.
-
-```typescript
-// Validate address
-ValidationSystem.validateAddress(address);
-
-// Validate amount
-ValidationSystem.validateAmount(amount);
-
-// Validate contract parameters
-ValidationSystem.validateContractParams({
-  owner: address,
-  tokenId: 1,
-});
-
-// Validate gas price
-await ValidationSystem.validateGasPrice(provider, maxGasPrice);
-
-// Validate contract deployment
-await ValidationSystem.validateContractDeployment(address, provider);
-```
-
-### RateLimiter
-
-Implements rate limiting for API calls.
-
-```typescript
-const rateLimiter = new RateLimiter({
-  maxRequests: 100,
-  timeWindow: 60000, // 1 minute
-});
-
-// Check rate limit
-rateLimiter.checkRateLimit();
-
-// Get current count
-const count = rateLimiter.getCurrentCount();
-
-// Get time until next request
-const timeUntilNext = rateLimiter.getTimeUntilNext();
-```
+The test suites cover:
+- Contract interactions
+- State management
+- Event emissions
+- Error handling
+- Edge cases
+- Integration scenarios
 
 ## Error Handling
 
@@ -358,18 +240,27 @@ try {
 }
 ```
 
-## Testing
+## Security
 
-```bash
-# Run tests
-npm test
+### Best Practices
 
-# Run tests with coverage
-npm run test:coverage
+1. **Key Management**
+   - Never expose private keys
+   - Use secure key storage
+   - Implement key rotation
+   - Use hardware wallets when possible
 
-# Run tests in watch mode
-npm run test:watch
-```
+2. **Transaction Security**
+   - Validate all inputs
+   - Check gas prices
+   - Implement timeouts
+   - Use nonce management
+
+3. **Network Security**
+   - Use secure RPC endpoints
+   - Implement rate limiting
+   - Monitor network health
+   - Handle network changes
 
 ## Contributing
 
@@ -379,6 +270,48 @@ npm run test:watch
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
+### Development Setup
+
+```bash
+# Install dependencies
+npm install
+
+# Run tests
+npm test
+
+# Build the project
+npm run build
+
+# Run linter
+npm run lint
+
+# Run type checking
+npm run type-check
+```
+
+### Code Style
+
+- Follow TypeScript best practices
+- Use ESLint for code linting
+- Follow the project's coding standards
+- Write comprehensive tests
+- Update documentation
+
 ## License
 
-This project is licensed under the AGPL 3.0 License - see the [LICENSE](LICENSE) file for details. 
+This project is licensed under the AGPL 3.0 License - see the [LICENSE](LICENSE) file for details.
+
+## Support
+
+For support, please:
+1. Check the [documentation](docs/)
+2. Open an issue in the repository
+3. Contact the development team
+
+## Roadmap
+
+- [ ] Additional network support
+- [ ] Enhanced monitoring capabilities
+- [ ] Improved error handling
+- [ ] Additional contract integrations
+- [ ] Performance optimizations 

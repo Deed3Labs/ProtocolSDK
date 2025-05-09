@@ -1,3 +1,12 @@
+/**
+ * @file FundManager Core Test Suite
+ * @description This test suite verifies the core functionality of the FundManager contract.
+ * It tests the fundamental fund management operations, state management, and event emissions.
+ * The suite uses mocked contract methods to simulate blockchain interactions.
+ * 
+ * @module FundManagerCoreTest
+ */
+
 // Add BigInt serialization support
 (BigInt.prototype as any).toJSON = function() {
   return this.toString();
@@ -18,11 +27,21 @@ import {
 } from '../../api/fundManager';
 import { AssetType } from '../../types/contracts';
 
+/**
+ * @description Test suite for the FundManager contract API
+ */
 describe('FundManager API', () => {
   let fundManager: ethers.Contract;
   let user1: ethers.Wallet;
   let validator: ethers.Wallet;
 
+  /**
+   * @description Sets up the test environment before all tests
+   * - Creates test wallets
+   * - Initializes contract with ABI
+   * - Sets up mock contract methods
+   * - Configures state tracking for commission balances
+   */
   beforeAll(async () => {
     // Create test wallets
     const privateKey1 = ethers.hexlify(ethers.randomBytes(32));
@@ -57,7 +76,11 @@ describe('FundManager API', () => {
     const deedNFT = await user1.getAddress();
     let nextTokenId = 1;
 
-    // Mock contract methods
+    /**
+     * @description Mocks the mintDeedNFT function to simulate minting a new DeedNFT
+     * @param args - Array of arguments for the mintDeedNFT function
+     * @returns Mock transaction response with token ID
+     */
     jest.spyOn(fundManager, 'mintDeedNFT').mockImplementation(async (...args: any[]) => {
       const [to, assetType, metadata] = args;
       const mockTxResponse = {
@@ -74,6 +97,11 @@ describe('FundManager API', () => {
       return mockTxResponse;
     });
 
+    /**
+     * @description Mocks the mintBatchDeedNFT function to simulate batch minting DeedNFTs
+     * @param args - Array of arguments containing the deeds array
+     * @returns Mock transaction response with token IDs
+     */
     jest.spyOn(fundManager, 'mintBatchDeedNFT').mockImplementation(async (...args: any[]) => {
       const [deeds] = args;
       const tokenIds = Array(deeds.length).fill(0).map((_, i) => nextTokenId + i);
@@ -91,6 +119,11 @@ describe('FundManager API', () => {
       return mockTxResponse;
     });
 
+    /**
+     * @description Mocks the withdrawValidatorFees function to simulate fee withdrawal
+     * @param args - Array of arguments containing validator and token addresses
+     * @returns Mock transaction response
+     */
     jest.spyOn(fundManager, 'withdrawValidatorFees').mockImplementation(async (...args: any[]) => {
       const [validator, token] = args;
       const validatorBalances = commissionBalances.get(validator) || new Map<string, bigint>();
@@ -105,12 +138,22 @@ describe('FundManager API', () => {
       return mockTxResponse;
     });
 
+    /**
+     * @description Mocks the getCommissionBalance function to simulate balance checking
+     * @param args - Array of arguments containing validator and token addresses
+     * @returns Mock commission balance
+     */
     jest.spyOn(fundManager, 'getCommissionBalance').mockImplementation(async (...args: any[]) => {
       const [validator, token] = args;
       const validatorBalances = commissionBalances.get(validator) || new Map<string, bigint>();
       return validatorBalances.get(token) || BigInt(0);
     });
 
+    /**
+     * @description Mocks the setCommissionPercentage function to simulate percentage setting
+     * @param args - Array of arguments containing the percentage value
+     * @returns Mock transaction response
+     */
     jest.spyOn(fundManager, 'setCommissionPercentage').mockImplementation(async (...args: any[]) => {
       const [percentage] = args;
       const mockTxResponse = {
@@ -123,6 +166,11 @@ describe('FundManager API', () => {
       return mockTxResponse;
     });
 
+    /**
+     * @description Mocks the setFeeReceiver function to simulate fee receiver setting
+     * @param args - Array of arguments containing the receiver address
+     * @returns Mock transaction response
+     */
     jest.spyOn(fundManager, 'setFeeReceiver').mockImplementation(async (...args: any[]) => {
       const [receiver] = args;
       const mockTxResponse = {
@@ -135,6 +183,11 @@ describe('FundManager API', () => {
       return mockTxResponse;
     });
 
+    /**
+     * @description Mocks the setValidatorRegistry function to simulate registry setting
+     * @param args - Array of arguments containing the registry address
+     * @returns Mock transaction response
+     */
     jest.spyOn(fundManager, 'setValidatorRegistry').mockImplementation(async (...args: any[]) => {
       const [registry] = args;
       const mockTxResponse = {
@@ -147,6 +200,11 @@ describe('FundManager API', () => {
       return mockTxResponse;
     });
 
+    /**
+     * @description Mocks the setDeedNFT function to simulate DeedNFT contract setting
+     * @param args - Array of arguments containing the DeedNFT contract address
+     * @returns Mock transaction response
+     */
     jest.spyOn(fundManager, 'setDeedNFT').mockImplementation(async (...args: any[]) => {
       const [deedNFT] = args;
       const mockTxResponse = {
@@ -160,7 +218,13 @@ describe('FundManager API', () => {
     });
   });
 
+  /**
+   * @description Test suite for DeedNFT management operations
+   */
   describe('Deed NFT Management', () => {
+    /**
+     * @description Tests minting a single DeedNFT
+     */
     it('should mint a new deed NFT', async () => {
       const tx = await executeContractTransaction(
         fundManager,
@@ -180,6 +244,9 @@ describe('FundManager API', () => {
       expect(tokenId).toBeDefined();
     });
 
+    /**
+     * @description Tests batch minting multiple DeedNFTs
+     */
     it('should mint batch deed NFTs', async () => {
       const deeds = [
         {
@@ -213,7 +280,14 @@ describe('FundManager API', () => {
     });
   });
 
+  /**
+   * @description Test suite for fee management operations
+   */
   describe('Fee Management', () => {
+    /**
+     * @description Tests validator fee operations including setting commission percentage,
+     * checking balance, and withdrawing fees
+     */
     it('should handle validator fees', async () => {
       const validatorAddress = await validator.getAddress();
       const token = ethers.ZeroAddress;
@@ -238,6 +312,9 @@ describe('FundManager API', () => {
       );
     });
 
+    /**
+     * @description Tests setting the fee receiver address
+     */
     it('should set fee receiver', async () => {
       const receiver = await user1.getAddress();
       await executeContractTransaction(

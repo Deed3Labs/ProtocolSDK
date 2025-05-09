@@ -1,3 +1,12 @@
+/**
+ * @file FundManager API Test Suite
+ * @description This test suite verifies the functionality of the FundManager contract API.
+ * It tests fee management, commission handling, and fund distribution.
+ * The suite uses mocked contract methods to simulate blockchain interactions.
+ * 
+ * @module FundManagerAPITest
+ */
+
 import { expect, jest } from '@jest/globals';
 import { ethers } from 'ethers';
 import {
@@ -12,6 +21,9 @@ import {
 } from '../../api/fundManager';
 import { TEST_CONFIG, provider } from '../setup';
 
+/**
+ * @description Test suite for the FundManager contract API
+ */
 describe('FundManager API', () => {
   let contract: ethers.Contract;
   const validOwner = '0x1234567890123456789012345678901234567890';
@@ -30,6 +42,12 @@ describe('FundManager API', () => {
   const validValidatorRegistry = '0x9876543210abcdef9876543210abcdef98765432';
   const validDeedNFT = '0xabcdef9876543210abcdef9876543210abcdef98';
 
+  /**
+   * @description Sets up the test environment before each test
+   * - Resets all mocks
+   * - Creates mock transaction response
+   * - Initializes mock contract with all required functions
+   */
   beforeEach(() => {
     // Reset mocks
     jest.clearAllMocks();
@@ -68,7 +86,13 @@ describe('FundManager API', () => {
     } as unknown as ethers.Contract;
   });
 
+  /**
+   * @description Test suite for DeedNFT minting operations
+   */
   describe('DeedNFT Minting', () => {
+    /**
+     * @description Tests successful minting of a single DeedNFT
+     */
     it('should mint single DeedNFT successfully', async () => {
       const result = await mintDeedNFT(
         contract,
@@ -95,6 +119,9 @@ describe('FundManager API', () => {
       );
     });
 
+    /**
+     * @description Tests successful batch minting of DeedNFTs
+     */
     it('should mint batch DeedNFTs successfully', async () => {
       const deeds = [
         {
@@ -114,6 +141,9 @@ describe('FundManager API', () => {
       expect(contract.mintBatchDeedNFT).toHaveBeenCalledWith(deeds);
     });
 
+    /**
+     * @description Tests handling of empty batch minting
+     */
     it('should handle empty batch minting', async () => {
       const emptyBatchResponse = {
         hash: '0x123',
@@ -129,6 +159,9 @@ describe('FundManager API', () => {
       expect(result).toEqual([]);
     });
 
+    /**
+     * @description Tests successful batch minting of multiple DeedNFTs
+     */
     it('should handle multiple DeedNFTs in batch', async () => {
       const deeds = [
         {
@@ -159,34 +192,55 @@ describe('FundManager API', () => {
     });
   });
 
+  /**
+   * @description Test suite for fee management operations
+   */
   describe('Fee Management', () => {
+    /**
+     * @description Tests successful withdrawal of validator fees
+     */
     it('should withdraw validator fees successfully', async () => {
       await withdrawValidatorFees(contract, validValidatorContract, validToken);
       expect(contract.withdrawValidatorFees).toHaveBeenCalledWith(validValidatorContract, validToken);
     });
 
+    /**
+     * @description Tests successful retrieval of commission balance
+     */
     it('should get commission balance successfully', async () => {
       const result = await getCommissionBalance(contract, validValidatorContract, validToken);
       expect(result).toBe(validCommissionBalance);
       expect(contract.getCommissionBalance).toHaveBeenCalledWith(validValidatorContract, validToken);
     });
 
+    /**
+     * @description Tests successful setting of commission percentage
+     */
     it('should set commission percentage successfully', async () => {
       await setCommissionPercentage(contract, validCommissionPercentage);
       expect(contract.setCommissionPercentage).toHaveBeenCalledWith(validCommissionPercentage);
     });
 
+    /**
+     * @description Tests successful setting of fee receiver
+     */
     it('should set fee receiver successfully', async () => {
       await setFeeReceiver(contract, validFeeReceiver);
       expect(contract.setFeeReceiver).toHaveBeenCalledWith(validFeeReceiver);
     });
 
+    /**
+     * @description Tests handling of zero commission balance
+     */
     it('should handle zero commission balance', async () => {
       jest.spyOn(contract, 'getCommissionBalance').mockResolvedValueOnce(0);
       const result = await getCommissionBalance(contract, validValidatorContract, validToken);
       expect(result).toBe(0);
     });
 
+    /**
+     * @description Tests handling of maximum commission percentage
+     */
     it('should handle maximum commission percentage', async () => {
       const maxPercentage = 100;
       await setCommissionPercentage(contract, maxPercentage);
@@ -194,17 +248,29 @@ describe('FundManager API', () => {
     });
   });
 
+  /**
+   * @description Test suite for contract configuration operations
+   */
   describe('Contract Configuration', () => {
+    /**
+     * @description Tests successful setting of validator registry
+     */
     it('should set validator registry successfully', async () => {
       await setValidatorRegistry(contract, validValidatorRegistry);
       expect(contract.setValidatorRegistry).toHaveBeenCalledWith(validValidatorRegistry);
     });
 
+    /**
+     * @description Tests successful setting of DeedNFT contract
+     */
     it('should set DeedNFT contract successfully', async () => {
       await setDeedNFT(contract, validDeedNFT);
       expect(contract.setDeedNFT).toHaveBeenCalledWith(validDeedNFT);
     });
 
+    /**
+     * @description Tests handling of setting the same validator registry multiple times
+     */
     it('should handle setting same validator registry', async () => {
       await setValidatorRegistry(contract, validValidatorRegistry);
       await setValidatorRegistry(contract, validValidatorRegistry);
@@ -212,6 +278,9 @@ describe('FundManager API', () => {
       expect(contract.setValidatorRegistry).toHaveBeenCalledWith(validValidatorRegistry);
     });
 
+    /**
+     * @description Tests handling of setting the same DeedNFT contract multiple times
+     */
     it('should handle setting same DeedNFT contract', async () => {
       await setDeedNFT(contract, validDeedNFT);
       await setDeedNFT(contract, validDeedNFT);
@@ -220,7 +289,13 @@ describe('FundManager API', () => {
     });
   });
 
+  /**
+   * @description Test suite for error handling scenarios
+   */
   describe('Error Handling', () => {
+    /**
+     * @description Tests handling of DeedNFT minting errors
+     */
     it('should handle minting errors', async () => {
       jest.spyOn(contract, 'mintDeedNFT').mockRejectedValue(new Error('Failed to mint DeedNFT'));
       await expect(mintDeedNFT(
@@ -236,36 +311,54 @@ describe('FundManager API', () => {
       )).rejects.toThrow('Failed to mint DeedNFT');
     });
 
+    /**
+     * @description Tests handling of fee withdrawal errors
+     */
     it('should handle fee withdrawal errors', async () => {
       jest.spyOn(contract, 'withdrawValidatorFees').mockRejectedValue(new Error('Failed to withdraw fees'));
       await expect(withdrawValidatorFees(contract, validValidatorContract, validToken))
         .rejects.toThrow('Failed to withdraw fees');
     });
 
+    /**
+     * @description Tests handling of commission balance query errors
+     */
     it('should handle commission balance query errors', async () => {
       jest.spyOn(contract, 'getCommissionBalance').mockRejectedValue(new Error('Failed to get commission balance'));
       await expect(getCommissionBalance(contract, validValidatorContract, validToken))
         .rejects.toThrow('Failed to get commission balance');
     });
 
+    /**
+     * @description Tests handling of commission percentage setting errors
+     */
     it('should handle commission percentage setting errors', async () => {
       jest.spyOn(contract, 'setCommissionPercentage').mockRejectedValue(new Error('Failed to set commission percentage'));
       await expect(setCommissionPercentage(contract, validCommissionPercentage))
         .rejects.toThrow('Failed to set commission percentage');
     });
 
+    /**
+     * @description Tests handling of fee receiver setting errors
+     */
     it('should handle fee receiver setting errors', async () => {
       jest.spyOn(contract, 'setFeeReceiver').mockRejectedValue(new Error('Failed to set fee receiver'));
       await expect(setFeeReceiver(contract, validFeeReceiver))
         .rejects.toThrow('Failed to set fee receiver');
     });
 
+    /**
+     * @description Tests handling of validator registry setting errors
+     */
     it('should handle validator registry setting errors', async () => {
       jest.spyOn(contract, 'setValidatorRegistry').mockRejectedValue(new Error('Failed to set validator registry'));
       await expect(setValidatorRegistry(contract, validValidatorRegistry))
         .rejects.toThrow('Failed to set validator registry');
     });
 
+    /**
+     * @description Tests handling of DeedNFT contract setting errors
+     */
     it('should handle DeedNFT contract setting errors', async () => {
       jest.spyOn(contract, 'setDeedNFT').mockRejectedValue(new Error('Failed to set DeedNFT contract'));
       await expect(setDeedNFT(contract, validDeedNFT))

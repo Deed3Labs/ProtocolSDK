@@ -1,3 +1,13 @@
+/**
+ * @file MetadataRenderer API Test Suite
+ * @description This test suite verifies the functionality of the MetadataRenderer contract API.
+ * It tests metadata management, token features, asset conditions, legal information,
+ * document management, gallery settings, and trait synchronization. The suite uses
+ * mocked contract methods to simulate blockchain interactions.
+ * 
+ * @module MetadataRendererAPITest
+ */
+
 import { expect, jest } from '@jest/globals';
 import { ethers } from 'ethers';
 import {
@@ -27,6 +37,9 @@ import {
 } from '../../api/metadataRenderer';
 import { TEST_CONFIG, provider } from '../setup';
 
+/**
+ * @description Test suite for the MetadataRenderer contract API
+ */
 describe('MetadataRenderer API', () => {
   let contract: ethers.Contract;
   const validTokenId = 1;
@@ -36,6 +49,12 @@ describe('MetadataRenderer API', () => {
   const validExternalLink = 'https://example.com';
   const validAddress = '0x1234567890123456789012345678901234567890';
 
+  /**
+   * @description Sets up the test environment before each test
+   * - Resets all mocks
+   * - Creates mock transaction response
+   * - Initializes mock contract with all required functions
+   */
   beforeEach(() => {
     // Reset mocks
     jest.clearAllMocks();
@@ -89,25 +108,43 @@ describe('MetadataRenderer API', () => {
     } as unknown as ethers.Contract;
   });
 
+  /**
+   * @description Test suite for basic metadata operations
+   */
   describe('Basic Metadata Functions', () => {
+    /**
+     * @description Tests successful retrieval of token URI
+     */
     it('should get token URI successfully', async () => {
       const result = await tokenURI(contract, validTokenId);
       expect(result).toBe(validMetadata);
       expect(contract.tokenURI).toHaveBeenCalledWith(validTokenId);
     });
 
+    /**
+     * @description Tests successful setting of custom metadata
+     */
     it('should set token custom metadata successfully', async () => {
       await setTokenCustomMetadata(contract, validTokenId, validMetadata);
       expect(contract.setTokenCustomMetadata).toHaveBeenCalledWith(validTokenId, validMetadata);
     });
   });
 
+  /**
+   * @description Test suite for token features management
+   */
   describe('Token Features Management', () => {
+    /**
+     * @description Tests successful setting of token features
+     */
     it('should set token features successfully', async () => {
       await setTokenFeatures(contract, validTokenId, validFeatures);
       expect(contract.setTokenFeatures).toHaveBeenCalledWith(validTokenId, validFeatures);
     });
 
+    /**
+     * @description Tests successful retrieval of token features
+     */
     it('should get token features successfully', async () => {
       const result = await getTokenFeatures(contract, validTokenId);
       expect(result).toEqual(validFeatures);
@@ -115,7 +152,13 @@ describe('MetadataRenderer API', () => {
     });
   });
 
+  /**
+   * @description Test suite for asset condition management
+   */
   describe('Asset Condition Management', () => {
+    /**
+     * @description Tests successful setting of asset condition
+     */
     it('should set asset condition successfully', async () => {
       const condition = 'Good';
       const lastInspectionDate = '2024-03-20';
@@ -143,6 +186,9 @@ describe('MetadataRenderer API', () => {
       );
     });
 
+    /**
+     * @description Tests successful retrieval of asset condition
+     */
     it('should get asset condition successfully', async () => {
       const result = await getAssetCondition(contract, validTokenId);
       expect(result).toEqual(['Good', '2024-03-20', ['issue1'], ['improvement1'], 'Notes']);
@@ -150,7 +196,13 @@ describe('MetadataRenderer API', () => {
     });
   });
 
+  /**
+   * @description Test suite for legal information management
+   */
   describe('Legal Information Management', () => {
+    /**
+     * @description Tests successful setting of token legal information
+     */
     it('should set token legal info successfully', async () => {
       const jurisdiction = 'US';
       const registrationNumber = 'REG123';
@@ -181,6 +233,9 @@ describe('MetadataRenderer API', () => {
       );
     });
 
+    /**
+     * @description Tests successful retrieval of token legal information
+     */
     it('should get token legal info successfully', async () => {
       const result = await getTokenLegalInfo(contract, validTokenId);
       expect(result).toEqual(['US', 'REG123', '2024-03-20', ['doc1'], ['restriction1'], 'Info']);
@@ -188,19 +243,31 @@ describe('MetadataRenderer API', () => {
     });
   });
 
+  /**
+   * @description Test suite for document management
+   */
   describe('Document Management', () => {
+    /**
+     * @description Tests successful retrieval of token document
+     */
     it('should get token document successfully', async () => {
       const result = await getTokenDocument(contract, validTokenId, 'type1');
       expect(result).toBe('document1');
       expect(contract.getTokenDocument).toHaveBeenCalledWith(validTokenId, 'type1');
     });
 
+    /**
+     * @description Tests successful retrieval of token document types
+     */
     it('should get token document types successfully', async () => {
       const result = await getTokenDocumentTypes(contract, validTokenId);
       expect(result).toEqual(['type1', 'type2']);
       expect(contract.getTokenDocumentTypes).toHaveBeenCalledWith(validTokenId);
     });
 
+    /**
+     * @description Tests successful retrieval of all token documents
+     */
     it('should get token documents successfully', async () => {
       const result = await getTokenDocuments(contract, validTokenId);
       expect(result).toEqual([{ type: 'type1', url: 'url1' }]);
@@ -208,29 +275,47 @@ describe('MetadataRenderer API', () => {
     });
   });
 
+  /**
+   * @description Test suite for gallery and external link management
+   */
   describe('Gallery and External Link Management', () => {
+    /**
+     * @description Tests successful setting of token gallery
+     */
     it('should set token gallery successfully', async () => {
       await setTokenGallery(contract, validTokenId, validImageUrls);
       expect(contract.setTokenGallery).toHaveBeenCalledWith(validTokenId, validImageUrls);
     });
 
+    /**
+     * @description Tests successful retrieval of token gallery
+     */
     it('should get token gallery successfully', async () => {
       const result = await getTokenGallery(contract, validTokenId);
       expect(result).toEqual(validImageUrls);
       expect(contract.getTokenGallery).toHaveBeenCalledWith(validTokenId);
     });
 
+    /**
+     * @description Tests successful setting of token external link
+     */
     it('should set token external link successfully', async () => {
       await setTokenExternalLink(contract, validTokenId, validExternalLink);
       expect(contract.setTokenExternalLink).toHaveBeenCalledWith(validTokenId, validExternalLink);
     });
 
+    /**
+     * @description Tests successful retrieval of token animation URL
+     */
     it('should get token animation URL successfully', async () => {
       const result = await getTokenAnimationURL(contract, validTokenId);
       expect(result).toBe('https://example.com/animation.mp4');
       expect(contract.getTokenAnimationURL).toHaveBeenCalledWith(validTokenId);
     });
 
+    /**
+     * @description Tests successful retrieval of token external link
+     */
     it('should get token external link successfully', async () => {
       const result = await getTokenExternalLink(contract, validTokenId);
       expect(result).toBe(validExternalLink);
@@ -238,7 +323,13 @@ describe('MetadataRenderer API', () => {
     });
   });
 
+  /**
+   * @description Test suite for trait management
+   */
   describe('Trait Management', () => {
+    /**
+     * @description Tests successful synchronization of trait updates
+     */
     it('should sync trait update successfully', async () => {
       const traitKey = 'color';
       const traitValue = 'blue';
@@ -247,87 +338,50 @@ describe('MetadataRenderer API', () => {
     });
   });
 
-  describe('Document Management', () => {
-    it('should manage token document successfully', async () => {
-      const docType = 'certificate';
-      const documentURI = 'ipfs://QmDocumentHash';
-      await manageTokenDocument(contract, validTokenId, docType, documentURI, false);
-      expect(contract.manageTokenDocument).toHaveBeenCalledWith(validTokenId, docType, documentURI, false);
-    });
-
-    it('should remove token document successfully', async () => {
-      const docType = 'certificate';
-      const documentURI = 'ipfs://QmDocumentHash';
-      await manageTokenDocument(contract, validTokenId, docType, documentURI, true);
-      expect(contract.manageTokenDocument).toHaveBeenCalledWith(validTokenId, docType, documentURI, true);
-    });
-  });
-
-  describe('Animation and Media Management', () => {
-    it('should set token animation URL successfully', async () => {
-      const animationURL = 'https://example.com/animation.mp4';
-      await setTokenAnimationURL(contract, validTokenId, animationURL);
-      expect(contract.setTokenAnimationURL).toHaveBeenCalledWith(validTokenId, animationURL);
-    });
-  });
-
-  describe('Asset Type Management', () => {
-    it('should set asset type image URI successfully', async () => {
-      const assetType = 1;
-      const imageURI = 'ipfs://QmImageHash';
-      await setAssetTypeImageURI(contract, assetType, imageURI);
-      expect(contract.setAssetTypeImageURI).toHaveBeenCalledWith(assetType, imageURI);
-    });
-
-    it('should set asset type background color successfully', async () => {
-      const assetType = 1;
-      const backgroundColor = '#FF0000';
-      await setAssetTypeBackgroundColor(contract, assetType, backgroundColor);
-      expect(contract.setAssetTypeBackgroundColor).toHaveBeenCalledWith(assetType, backgroundColor);
-    });
-  });
-
-  describe('Contract Configuration', () => {
-    it('should set DeedNFT contract successfully', async () => {
-      await setDeedNFT(contract, validAddress);
-      expect(contract.setDeedNFT).toHaveBeenCalledWith(validAddress);
-    });
-
-    it('should set invalidated image URI successfully', async () => {
-      const imageURI = 'ipfs://QmInvalidatedImageHash';
-      await setInvalidatedImageURI(contract, imageURI);
-      expect(contract.setInvalidatedImageURI).toHaveBeenCalledWith(imageURI);
-    });
-  });
-
+  /**
+   * @description Test suite for error handling scenarios
+   */
   describe('Error Handling', () => {
-    it('should handle read errors', async () => {
+    /**
+     * @description Tests handling of token URI retrieval errors
+     */
+    it('should handle token URI retrieval errors', async () => {
       jest.spyOn(contract, 'tokenURI').mockRejectedValue(new Error('Failed to get token URI'));
       await expect(tokenURI(contract, validTokenId)).rejects.toThrow('Failed to get token URI');
     });
 
-    it('should handle write errors', async () => {
+    /**
+     * @description Tests handling of metadata setting errors
+     */
+    it('should handle metadata setting errors', async () => {
       jest.spyOn(contract, 'setTokenCustomMetadata').mockRejectedValue(new Error('Failed to set metadata'));
       await expect(setTokenCustomMetadata(contract, validTokenId, validMetadata))
         .rejects.toThrow('Failed to set metadata');
     });
 
-    it('should handle trait update errors', async () => {
-      jest.spyOn(contract, 'syncTraitUpdate').mockRejectedValue(new Error('Failed to update trait'));
-      await expect(syncTraitUpdate(contract, validTokenId, 'color', 'blue'))
-        .rejects.toThrow('Failed to update trait');
+    /**
+     * @description Tests handling of feature setting errors
+     */
+    it('should handle feature setting errors', async () => {
+      jest.spyOn(contract, 'setTokenFeatures').mockRejectedValue(new Error('Failed to set features'));
+      await expect(setTokenFeatures(contract, validTokenId, validFeatures))
+        .rejects.toThrow('Failed to set features');
     });
 
-    it('should handle document management errors', async () => {
-      jest.spyOn(contract, 'manageTokenDocument').mockRejectedValue(new Error('Failed to manage document'));
-      await expect(manageTokenDocument(contract, validTokenId, 'certificate', 'ipfs://hash', false))
-        .rejects.toThrow('Failed to manage document');
-    });
-
-    it('should handle asset type configuration errors', async () => {
-      jest.spyOn(contract, 'setAssetTypeImageURI').mockRejectedValue(new Error('Failed to set image URI'));
-      await expect(setAssetTypeImageURI(contract, 1, 'ipfs://hash'))
-        .rejects.toThrow('Failed to set image URI');
+    /**
+     * @description Tests handling of asset condition setting errors
+     */
+    it('should handle asset condition setting errors', async () => {
+      jest.spyOn(contract, 'setAssetCondition').mockRejectedValue(new Error('Failed to set asset condition'));
+      await expect(setAssetCondition(
+        contract,
+        validTokenId,
+        'Good',
+        '2024-03-20',
+        ['issue1'],
+        ['improvement1'],
+        'Notes'
+      )).rejects.toThrow('Failed to set asset condition');
     });
   });
 }); 

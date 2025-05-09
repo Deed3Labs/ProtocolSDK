@@ -1,3 +1,12 @@
+/**
+ * @file Validator Core Test Suite
+ * @description This test suite verifies the core functionality of the Validator contract.
+ * It tests the fundamental validation operations, state management, and event emissions.
+ * The suite uses mocked contract methods to simulate blockchain interactions.
+ * 
+ * @module ValidatorCoreTest
+ */
+
 // Add BigInt serialization support
 (BigInt.prototype as any).toJSON = function() {
   return this.toString();

@@ -1,3 +1,12 @@
+/**
+ * @file MetadataRenderer Core Test Suite
+ * @description This test suite verifies the core functionality of the MetadataRenderer contract.
+ * It tests the fundamental metadata operations, state management, and event emissions.
+ * The suite uses mocked contract methods to simulate blockchain interactions.
+ * 
+ * @module MetadataRendererCoreTest
+ */
+
 // Add BigInt serialization support
 (BigInt.prototype as any).toJSON = function() {
   return this.toString();
@@ -22,6 +31,9 @@ import { mintAsset } from '../../api/deedNFT';
 import { IDeedNFT } from '../../contracts/IDeedNFT';
 import { AssetType } from '../../types/contracts';
 
+/**
+ * @description Test suite for the MetadataRenderer contract API
+ */
 describe('MetadataRenderer API', () => {
   let metadataRenderer: ethers.Contract;
   let deedNFT: ethers.Contract;
@@ -29,6 +41,13 @@ describe('MetadataRenderer API', () => {
   let validator: ethers.Wallet;
   let tokenId: string;
 
+  /**
+   * @description Sets up the test environment before all tests
+   * - Creates test wallets
+   * - Initializes contracts with ABIs
+   * - Sets up mock contract methods
+   * - Configures state tracking for token metadata
+   */
   beforeAll(async () => {
     // Create test wallets
     const privateKey1 = ethers.hexlify(ethers.randomBytes(32));
@@ -85,12 +104,21 @@ describe('MetadataRenderer API', () => {
     }>();
     const tokenURIs = new Map<string, string>();
 
-    // Mock contract methods
+    /**
+     * @description Mocks the tokenURI function to simulate retrieving token metadata URI
+     * @param args - Array of arguments containing the token ID
+     * @returns Mock token URI
+     */
     jest.spyOn(metadataRenderer, 'tokenURI').mockImplementation(async (...args: any[]) => {
       const [tokenId] = args;
       return tokenURIs.get(tokenId.toString()) || 'ipfs://metadata';
     });
 
+    /**
+     * @description Mocks the syncTraitUpdate function to simulate updating token traits
+     * @param args - Array of arguments containing token ID, key, and value
+     * @returns Mock transaction response
+     */
     jest.spyOn(metadataRenderer, 'syncTraitUpdate').mockImplementation(async (...args: any[]) => {
       const mockTxResponse = {
         hash: '0xabc',
@@ -102,6 +130,11 @@ describe('MetadataRenderer API', () => {
       return mockTxResponse;
     });
 
+    /**
+     * @description Mocks the setTokenCustomMetadata function to simulate setting custom metadata
+     * @param args - Array of arguments containing token ID and metadata
+     * @returns Mock transaction response
+     */
     jest.spyOn(metadataRenderer, 'setTokenCustomMetadata').mockImplementation(async (...args: any[]) => {
       const mockTxResponse = {
         hash: '0xabc',
@@ -113,6 +146,11 @@ describe('MetadataRenderer API', () => {
       return mockTxResponse;
     });
 
+    /**
+     * @description Mocks the setTokenFeatures function to simulate setting token features
+     * @param args - Array of arguments containing token ID and features array
+     * @returns Mock transaction response
+     */
     jest.spyOn(metadataRenderer, 'setTokenFeatures').mockImplementation(async (...args: any[]) => {
       const [tokenId, features] = args;
       tokenFeatures.set(tokenId.toString(), features);
@@ -126,11 +164,21 @@ describe('MetadataRenderer API', () => {
       return mockTxResponse;
     });
 
+    /**
+     * @description Mocks the getTokenFeatures function to simulate retrieving token features
+     * @param args - Array of arguments containing the token ID
+     * @returns Mock array of token features
+     */
     jest.spyOn(metadataRenderer, 'getTokenFeatures').mockImplementation(async (...args: any[]) => {
       const [tokenId] = args;
       return tokenFeatures.get(tokenId.toString()) || [];
     });
 
+    /**
+     * @description Mocks the setAssetCondition function to simulate setting asset condition
+     * @param args - Array of arguments containing token ID and condition details
+     * @returns Mock transaction response
+     */
     jest.spyOn(metadataRenderer, 'setAssetCondition').mockImplementation(async (...args: any[]) => {
       const [tokenId, condition, lastInspectionDate, knownIssues, improvements, additionalNotes] = args;
       tokenConditions.set(tokenId.toString(), {
@@ -150,6 +198,11 @@ describe('MetadataRenderer API', () => {
       return mockTxResponse;
     });
 
+    /**
+     * @description Mocks the getAssetCondition function to simulate retrieving asset condition
+     * @param args - Array of arguments containing the token ID
+     * @returns Mock asset condition details
+     */
     jest.spyOn(metadataRenderer, 'getAssetCondition').mockImplementation(async (...args: any[]) => {
       const [tokenId] = args;
       const condition = tokenConditions.get(tokenId.toString()) || {
@@ -168,6 +221,11 @@ describe('MetadataRenderer API', () => {
       ];
     });
 
+    /**
+     * @description Mocks the setTokenLegalInfo function to simulate setting legal information
+     * @param args - Array of arguments containing token ID and legal details
+     * @returns Mock transaction response
+     */
     jest.spyOn(metadataRenderer, 'setTokenLegalInfo').mockImplementation(async (...args: any[]) => {
       const [tokenId, jurisdiction, registrationNumber, registrationDate, documents, restrictions, additionalInfo] = args;
       tokenLegalInfo.set(tokenId.toString(), {
@@ -188,6 +246,11 @@ describe('MetadataRenderer API', () => {
       return mockTxResponse;
     });
 
+    /**
+     * @description Mocks the getTokenLegalInfo function to simulate retrieving legal information
+     * @param args - Array of arguments containing the token ID
+     * @returns Mock legal information details
+     */
     jest.spyOn(metadataRenderer, 'getTokenLegalInfo').mockImplementation(async (...args: any[]) => {
       const [tokenId] = args;
       const info = tokenLegalInfo.get(tokenId.toString()) || {
@@ -208,7 +271,11 @@ describe('MetadataRenderer API', () => {
       ];
     });
 
-    // Mock DeedNFT mintAsset
+    /**
+     * @description Mocks the DeedNFT mintAsset function to simulate minting a new token
+     * @param args - Array of arguments containing minting parameters
+     * @returns Mock transaction response with token ID
+     */
     let nextTokenId = 1;
     jest.spyOn(deedNFT, 'mintAsset').mockImplementation(async (...args: any[]) => {
       const [to, assetType, metadata] = args;
@@ -228,6 +295,9 @@ describe('MetadataRenderer API', () => {
     });
   });
 
+  /**
+   * @description Sets up a new token for each test
+   */
   beforeEach(async () => {
     // Mint a new token for each test
     const tx = await executeContractTransaction(
@@ -246,93 +316,141 @@ describe('MetadataRenderer API', () => {
     tokenId = '1';
   });
 
+  /**
+   * @description Test suite for metadata management operations
+   */
   describe('Metadata Management', () => {
+    /**
+     * @description Tests retrieving token URI
+     */
     it('should get token URI', async () => {
       const uri = await tokenURI(metadataRenderer, Number(tokenId));
       expect(uri).toBe('ipfs://metadata');
     });
 
-    it('should sync trait updates', async () => {
+    /**
+     * @description Tests updating token traits
+     */
+    it('should update token traits', async () => {
       await executeContractTransaction(
         metadataRenderer,
         'syncTraitUpdate',
-        [Number(tokenId), 'traitKey', 'traitValue']
+        [Number(tokenId), 'color', 'blue']
       );
     });
 
+    /**
+     * @description Tests setting custom metadata
+     */
     it('should set custom metadata', async () => {
-      const metadata = '{"custom": "metadata"}';
       await executeContractTransaction(
         metadataRenderer,
         'setTokenCustomMetadata',
-        [Number(tokenId), metadata]
+        [Number(tokenId), '{"custom": "metadata"}']
       );
     });
   });
 
-  describe('Feature Management', () => {
-    it('should manage token features', async () => {
+  /**
+   * @description Test suite for token features operations
+   */
+  describe('Token Features', () => {
+    /**
+     * @description Tests setting and retrieving token features
+     */
+    it('should set and get token features', async () => {
       const features = ['feature1', 'feature2'];
-      
       await executeContractTransaction(
         metadataRenderer,
         'setTokenFeatures',
         [Number(tokenId), features]
       );
+
       const retrievedFeatures = await getTokenFeatures(metadataRenderer, Number(tokenId));
       expect(retrievedFeatures).toEqual(features);
     });
   });
 
+  /**
+   * @description Test suite for asset condition operations
+   */
   describe('Asset Condition', () => {
-    it('should manage asset condition information', async () => {
-      const condition = 'Good';
-      const lastInspectionDate = '2024-03-20';
-      const knownIssues = ['None'];
-      const improvements = ['Recent renovation'];
-      const additionalNotes = 'Well maintained';
+    /**
+     * @description Tests setting and retrieving asset condition
+     */
+    it('should set and get asset condition', async () => {
+      const condition = {
+        condition: 'Good',
+        lastInspectionDate: '2024-03-20',
+        knownIssues: ['issue1'],
+        improvements: ['improvement1'],
+        additionalNotes: 'Notes'
+      };
 
       await executeContractTransaction(
         metadataRenderer,
         'setAssetCondition',
-        [Number(tokenId), condition, lastInspectionDate, knownIssues, improvements, additionalNotes]
+        [
+          Number(tokenId),
+          condition.condition,
+          condition.lastInspectionDate,
+          condition.knownIssues,
+          condition.improvements,
+          condition.additionalNotes
+        ]
       );
 
-      const [retrievedCondition, retrievedDate, retrievedIssues, retrievedImprovements, retrievedNotes] = 
-        await getAssetCondition(metadataRenderer, Number(tokenId));
-      
-      expect(retrievedCondition).toBe(condition);
-      expect(retrievedDate).toBe(lastInspectionDate);
-      expect(retrievedIssues).toEqual(knownIssues);
-      expect(retrievedImprovements).toEqual(improvements);
-      expect(retrievedNotes).toBe(additionalNotes);
+      const retrievedCondition = await getAssetCondition(metadataRenderer, Number(tokenId));
+      expect(retrievedCondition).toEqual([
+        condition.condition,
+        condition.lastInspectionDate,
+        condition.knownIssues,
+        condition.improvements,
+        condition.additionalNotes
+      ]);
     });
   });
 
+  /**
+   * @description Test suite for legal information operations
+   */
   describe('Legal Information', () => {
-    it('should manage legal information', async () => {
-      const jurisdiction = 'California';
-      const registrationNumber = 'REG123456';
-      const registrationDate = '2024-01-01';
-      const documents = ['doc1.pdf', 'doc2.pdf'];
-      const restrictions = ['restriction1', 'restriction2'];
-      const additionalInfo = 'Additional legal information';
+    /**
+     * @description Tests setting and retrieving legal information
+     */
+    it('should set and get legal information', async () => {
+      const legalInfo = {
+        jurisdiction: 'US',
+        registrationNumber: '12345',
+        registrationDate: '2024-03-20',
+        documents: ['doc1'],
+        restrictions: ['restriction1'],
+        additionalInfo: 'Additional info'
+      };
 
       await executeContractTransaction(
         metadataRenderer,
         'setTokenLegalInfo',
-        [Number(tokenId), jurisdiction, registrationNumber, registrationDate, documents, restrictions, additionalInfo]
+        [
+          Number(tokenId),
+          legalInfo.jurisdiction,
+          legalInfo.registrationNumber,
+          legalInfo.registrationDate,
+          legalInfo.documents,
+          legalInfo.restrictions,
+          legalInfo.additionalInfo
+        ]
       );
 
-      const [retrievedJurisdiction, retrievedNumber, retrievedDate, retrievedDocs, retrievedRestrictions, retrievedInfo] = 
-        await getTokenLegalInfo(metadataRenderer, Number(tokenId));
-      
-      expect(retrievedJurisdiction).toBe(jurisdiction);
-      expect(retrievedNumber).toBe(registrationNumber);
-      expect(retrievedDate).toBe(registrationDate);
-      expect(retrievedDocs).toEqual(documents);
-      expect(retrievedRestrictions).toEqual(restrictions);
-      expect(retrievedInfo).toBe(additionalInfo);
+      const retrievedInfo = await getTokenLegalInfo(metadataRenderer, Number(tokenId));
+      expect(retrievedInfo).toEqual([
+        legalInfo.jurisdiction,
+        legalInfo.registrationNumber,
+        legalInfo.registrationDate,
+        legalInfo.documents,
+        legalInfo.restrictions,
+        legalInfo.additionalInfo
+      ]);
     });
   });
 }); 
