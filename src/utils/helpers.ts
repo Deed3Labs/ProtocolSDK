@@ -68,8 +68,8 @@ export function calculateGasPrice(
  * Format transaction hash to a shortened version
  */
 export function formatTxHash(hash: string): string {
-  if (!hash.match(/^0x[0-9a-fA-F]{64}$/)) {
-    throw new ValidationError('Invalid transaction hash format');
+  if (!hash.startsWith('0x') || hash.length !== 66) {
+    throw new ValidationError('Invalid transaction hash');
   }
   return `${hash.slice(0, 8)}...${hash.slice(-6)}`;
 }

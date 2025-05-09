@@ -2,6 +2,10 @@ import { ethers } from 'ethers';
 import { IDeedNFT } from '../contracts/IDeedNFT';
 import { TransactionManager, TransactionResult } from '../utils/transactionManager';
 
+interface TransactionLog {
+  topics: string[];
+}
+
 export async function mintAsset(
   contract: ethers.Contract,
   owner: string,
@@ -60,14 +64,11 @@ export async function safeTransferFrom(
 export async function updateMetadata(
   contract: ethers.Contract,
   tokenId: number,
-  uri: string,
-  operatingAgreement: string,
-  definition: string,
-  configuration: string,
-  transactionManager: TransactionManager
-): Promise<TransactionResult> {
-  const tx = await contract.updateMetadata(tokenId, uri, operatingAgreement, definition, configuration);
-  return await transactionManager.sendTransaction(tx);
+  ipfsDetailsHash: string,
+  transactionManager?: TransactionManager
+): Promise<void> {
+  const tx = await contract.updateMetadata(tokenId, ipfsDetailsHash);
+  await tx.wait();
 }
 
 export async function tokenURI(contract: ethers.Contract, tokenId: number): Promise<string> {
@@ -86,63 +87,117 @@ export async function updateValidationStatus(
 }
 
 export async function addMinter(
-  contract: ethers.Contract, 
+  contract: ethers.Contract,
   minter: string,
-  transactionManager: TransactionManager
-): Promise<TransactionResult> {
+  transactionManager?: TransactionManager
+): Promise<void> {
   const tx = await contract.addMinter(minter);
-  return await transactionManager.sendTransaction(tx);
+  await tx.wait();
 }
 
 export async function removeMinter(
-  contract: ethers.Contract, 
+  contract: ethers.Contract,
   minter: string,
-  transactionManager: TransactionManager
-): Promise<TransactionResult> {
+  transactionManager?: TransactionManager
+): Promise<void> {
   const tx = await contract.removeMinter(minter);
-  return await transactionManager.sendTransaction(tx);
+  await tx.wait();
 }
 
-export async function hasRole(contract: ethers.Contract, role: string, account: string): Promise<boolean> {
-  return await contract.hasRole(role, account);
+export async function isMinter(
+  contract: ethers.Contract,
+  minter: string
+): Promise<boolean> {
+  return await contract.isMinter(minter);
 }
 
-export async function setApprovedMarketplace(
-  contract: ethers.Contract, 
-  marketplace: string, 
-  approved: boolean,
-  transactionManager: TransactionManager
-): Promise<TransactionResult> {
-  const tx = await contract.setApprovedMarketplace(marketplace, approved);
-  return await transactionManager.sendTransaction(tx);
+export async function addApprovedMarketplace(
+  contract: ethers.Contract,
+  marketplace: string,
+  transactionManager?: TransactionManager
+): Promise<void> {
+  const tx = await contract.addApprovedMarketplace(marketplace);
+  await tx.wait();
 }
 
-export async function isApprovedMarketplace(contract: ethers.Contract, marketplace: string): Promise<boolean> {
+export async function removeApprovedMarketplace(
+  contract: ethers.Contract,
+  marketplace: string,
+  transactionManager?: TransactionManager
+): Promise<void> {
+  const tx = await contract.removeApprovedMarketplace(marketplace);
+  await tx.wait();
+}
+
+export async function isApprovedMarketplace(
+  contract: ethers.Contract,
+  marketplace: string
+): Promise<boolean> {
   return await contract.isApprovedMarketplace(marketplace);
 }
 
 export async function setRoyaltyEnforcement(
-  contract: ethers.Contract, 
-  enforced: boolean,
-  transactionManager: TransactionManager
-): Promise<TransactionResult> {
-  const tx = await contract.setRoyaltyEnforcement(enforced);
-  return await transactionManager.sendTransaction(tx);
+  contract: ethers.Contract,
+  enforce: boolean,
+  transactionManager?: TransactionManager
+): Promise<void> {
+  const tx = await contract.setRoyaltyEnforcement(enforce);
+  await tx.wait();
 }
 
-export async function isRoyaltyEnforced(contract: ethers.Contract): Promise<boolean> {
+export async function isRoyaltyEnforced(
+  contract: ethers.Contract
+): Promise<boolean> {
   return await contract.isRoyaltyEnforced();
 }
 
-export async function getTransferValidator(contract: ethers.Contract): Promise<string> {
+export async function getTransferValidator(
+  contract: ethers.Contract
+): Promise<string> {
   return await contract.getTransferValidator();
 }
 
 export async function setTransferValidator(
-  contract: ethers.Contract, 
+  contract: ethers.Contract,
   validator: string,
-  transactionManager: TransactionManager
-): Promise<TransactionResult> {
+  transactionManager?: TransactionManager
+): Promise<void> {
   const tx = await contract.setTransferValidator(validator);
-  return await transactionManager.sendTransaction(tx);
+  await tx.wait();
+}
+
+export async function mintDeedNFT(
+  contract: ethers.Contract,
+  owner: string,
+  assetType: number,
+  ipfsDetailsHash: string,
+  definition: string,
+  configuration: string,
+  validatorContract: string,
+  token: string,
+  salt: number
+): Promise<number> {
+  const tx = await contract.mintDeedNFT(owner, assetType, ipfsDetailsHash, definition, configuration, validatorContract, token, salt);
+  const receipt = await tx.wait();
+  const event = receipt.logs[0] as TransactionLog;
+  return Number(event.topics[3]);
+}
+
+export async function mintBatchDeedNFT(
+  contract: ethers.Contract,
+  deeds: Array<{
+    owner: string;
+    assetType: number;
+    ipfsDetailsHash: string;
+    definition: string;
+    configuration: string;
+    validatorContract: string;
+    token: string;
+    salt: number;
+  }>
+): Promise<number[]> {
+  const tx = await contract.mintBatchDeedNFT(deeds);
+  const receipt = await tx.wait();
+  const events = receipt.logs as TransactionLog[];
+  return events.map(event => Number(event.topics[3]));
 } 

@@ -10,11 +10,41 @@ export const IFundManager = {
         { name: 'ipfsDetailsHash', type: 'string' },
         { name: 'definition', type: 'string' },
         { name: 'configuration', type: 'string' },
-        { name: 'validatorAddress', type: 'address' }
+        { name: 'validatorContract', type: 'address' },
+        { name: 'token', type: 'address' },
+        { name: 'salt', type: 'uint256' }
       ],
       name: 'mintDeedNFT',
-      outputs: [],
+      outputs: [{ name: 'tokenId', type: 'uint256' }],
       stateMutability: 'nonpayable',
+      type: 'function'
+    },
+    {
+      inputs: [
+        { name: 'deeds', type: 'tuple[]', components: [
+          { name: 'owner', type: 'address' },
+          { name: 'assetType', type: 'uint8' },
+          { name: 'ipfsDetailsHash', type: 'string' },
+          { name: 'definition', type: 'string' },
+          { name: 'configuration', type: 'string' },
+          { name: 'validatorContract', type: 'address' },
+          { name: 'token', type: 'address' },
+          { name: 'salt', type: 'uint256' }
+        ]}
+      ],
+      name: 'mintBatchDeedNFT',
+      outputs: [{ name: 'tokenIds', type: 'uint256[]' }],
+      stateMutability: 'nonpayable',
+      type: 'function'
+    },
+    {
+      inputs: [
+        { name: 'validator', type: 'address' },
+        { name: 'token', type: 'address' }
+      ],
+      name: 'getCommissionBalance',
+      outputs: [{ name: '', type: 'uint256' }],
+      stateMutability: 'view',
       type: 'function'
     },
     {
@@ -25,13 +55,6 @@ export const IFundManager = {
       name: 'withdrawValidatorFees',
       outputs: [],
       stateMutability: 'nonpayable',
-      type: 'function'
-    },
-    {
-      inputs: [{ name: 'validator', type: 'address' }],
-      name: 'getCommissionBalance',
-      outputs: [{ name: '', type: 'uint256' }],
-      stateMutability: 'view',
       type: 'function'
     },
     {

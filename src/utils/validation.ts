@@ -330,13 +330,15 @@ export class ValidationSystem {
   /**
    * Validate an IPFS hash
    * @param hash IPFS hash to validate
-   * @param field Field name for error message
+   * @param field Field name for error reporting
    * @throws ValidationError if hash is invalid
    */
   static validateIpfsHash(hash: string, field: string): void {
-    if (!hash.startsWith('Qm') || hash.length !== 46) {
+    // Basic IPFS hash validation (CID v0 or v1)
+    const ipfsHashRegex = /^(Qm[1-9A-HJ-NP-Za-km-z]{44}|b[A-Za-z2-7]{58}|B[A-Z2-7]{58}|z[1-9A-HJ-NP-Za-km-z]{48}|F[0-9A-F]{50})$/;
+    if (!ipfsHashRegex.test(hash)) {
       throw new ValidationError(
-        `${field} must be a valid IPFS hash`,
+        'Invalid IPFS hash format',
         field,
         { hash }
       );
