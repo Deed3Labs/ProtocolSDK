@@ -1,5 +1,5 @@
 {
-  "name": "@protocol/sdk",
+  "name": "@deed3labs/protocol-sdk",
   "version": "1.0.0",
   "description": "SDK for Protocol Contracts",
   "main": "dist/index.js",
