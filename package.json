@@ -1,7 +1,7 @@
 {
   "name": "@deed3labs/protocol-sdk",
-  "version": "1.0.0",
-  "description": "SDK for Protocol Contracts",
+  "version": "0.1.0-beta.1",
+  "description": "A TypeScript SDK for The Deed Protocol",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {

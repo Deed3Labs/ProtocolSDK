@@ -11,7 +11,7 @@
     "forceConsistentCasingInFileNames": true,
     "outDir": "./dist",
     "rootDir": "./src",
-    "noEmit": true,
+    "noEmit": false,
     "types": ["node", "jest"]
   },
   "include": ["src/**/*"],

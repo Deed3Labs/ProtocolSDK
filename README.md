@@ -1,5 +1,7 @@
 # Protocol SDK
 
+> **BETA VERSION** - This SDK is currently in beta. Please report any issues or bugs you encounter. API may change before the stable release.
+
 A TypeScript SDK for interacting with Protocol Contracts, including DeedNFT, FundManager, Validator, and ValidatorRegistry.
 
 ## Features
@@ -18,14 +20,14 @@ A TypeScript SDK for interacting with Protocol Contracts, including DeedNFT, Fun
 ## Installation
 
 ```bash
-npm install @protocol/sdk
+npm install @deed3labs/protocol-sdk
 ```
 
 ## Quick Start
 
 ```typescript
 import { ethers } from 'ethers';
-import { TransactionManager, ValidationSystem, MonitoringSystem } from '@protocol/sdk';
+import { TransactionManager, ValidationSystem, MonitoringSystem } from '@deed3labs/protocol-sdk';
 
 // Initialize provider and transaction manager
 const provider = new ethers.JsonRpcProvider('YOUR_RPC_URL');
@@ -102,7 +104,7 @@ The SDK is organized into several key components:
    ##### Creating a Form
 
    ```typescript
-   import { FormFactory } from '@protocol/sdk';
+   import { FormFactory } from '@deed3labs/protocol-sdk';
 
    // Create a DeedNFT form
    const formFactory = FormFactory.getInstance();
@@ -260,7 +262,7 @@ The SDK is organized into several key components:
    The form handling system integrates with the rest of the SDK:
 
    ```typescript
-   import { ProtocolSDK } from '@protocol/sdk';
+   import { ProtocolSDK } from '@deed3labs/protocol-sdk';
 
    const sdk = new ProtocolSDK({
      provider: ethersProvider,
@@ -316,8 +318,8 @@ The SDK is organized into several key components:
 The SDK provides network-related types, utilities, and contract addresses for supported networks. Here's what's included:
 
 ```typescript
-import { ChainId, NetworkConfig } from '@protocol/sdk';
-import { getContractAddresses } from '@protocol/sdk/config/contracts';
+import { ChainId, NetworkConfig } from '@deed3labs/protocol-sdk';
+import { getContractAddresses } from '@deed3labs/protocol-sdk/config/contracts';
 
 // Types provided by the SDK
 interface NetworkConfig {
