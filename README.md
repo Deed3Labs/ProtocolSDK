@@ -1,8 +1,8 @@
 # Protocol SDK
 
-> **BETA VERSION** - This SDK is currently in beta. Please report any issues or bugs you encounter. API may change before the stable release.
-
 A TypeScript SDK for interacting with Protocol Contracts, including DeedNFT, FundManager, Validator, and ValidatorRegistry.
+
+> **BETA VERSION** - This SDK is currently in beta. Please report any issues or bugs you encounter. API may change before the stable release.
 
 ## Features
 
