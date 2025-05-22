@@ -3,7 +3,16 @@ import { ethers } from 'ethers';
 /**
  * Supported field types for form inputs
  */
-export type FieldType = 'text' | 'number' | 'address' | 'ipfs' | 'date' | 'select' | 'textarea' | 'file';
+export type FieldType = 
+  | 'text'
+  | 'number'
+  | 'textarea'
+  | 'select'
+  | 'date'
+  | 'address'
+  | 'ipfs'
+  | 'array'
+  | 'object';
 
 /**
  * Validation rules for form fields
@@ -56,6 +65,7 @@ export interface FormField {
     /** Action to take when dependency is met */
     action: 'show' | 'hide' | 'enable' | 'disable';
   }[];
+  fields?: FormField[]; // For object type fields
 }
 
 /**

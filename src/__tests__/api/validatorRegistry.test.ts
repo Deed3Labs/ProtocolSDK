@@ -9,6 +9,7 @@
 
 import { expect, jest } from '@jest/globals';
 import { ethers } from 'ethers';
+import { IValidatorRegistryContract } from '../../contracts';
 import {
   getValidatorOwner,
   getValidatorInfo,
@@ -18,12 +19,15 @@ import {
   getValidatorName
 } from '../../api/validatorRegistry';
 import { TEST_CONFIG, provider } from '../setup';
+import * as validatorRegistryApi from '../../api/validatorRegistry';
+import { TransactionManager } from '../../utils/transactionManager';
 
 /**
  * @description Test suite for the ValidatorRegistry contract API
  */
 describe('ValidatorRegistry API', () => {
-  let contract: ethers.Contract;
+  let contract: IValidatorRegistryContract;
+  let transactionManager: TransactionManager;
   const validValidatorAddress = '0x1234567890123456789012345678901234567890';
   const validOwnerAddress = '0x0987654321098765432109876543210987654321';
   const validAssetTypeId = 1;
@@ -39,6 +43,9 @@ describe('ValidatorRegistry API', () => {
     // Reset mocks
     jest.clearAllMocks();
 
+    // Initialize transaction manager
+    transactionManager = new TransactionManager(provider);
+
     // Create mock contract with proper types
     contract = {
       // Read functions
@@ -53,11 +60,17 @@ describe('ValidatorRegistry API', () => {
       isValidatorActive: jest.fn<() => Promise<boolean>>().mockResolvedValue(true),
       isValidatorRegistered: jest.fn<() => Promise<boolean>>().mockResolvedValue(true),
       getValidatorName: jest.fn<() => Promise<string>>().mockResolvedValue(validValidatorName),
+      getValidatorAssetTypes: jest.fn<() => Promise<number[]>>().mockResolvedValue([validAssetTypeId]),
+      getSupportedAssetTypes: jest.fn<() => Promise<number[]>>().mockResolvedValue([validAssetTypeId]),
+      updateValidatorName: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+      updateValidatorStatus: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+      removeValidator: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
 
       interface: {
         format: () => ({})
-      }
-    } as unknown as ethers.Contract;
+      },
+      runner: { provider: provider }
+    } as unknown as IValidatorRegistryContract;
   });
 
   /**
@@ -238,6 +251,46 @@ describe('ValidatorRegistry API', () => {
       jest.spyOn(contract, 'getValidatorsForAssetType').mockRejectedValue(new Error('Failed to get validators'));
       await expect(getValidatorsForAssetType(contract, validAssetTypeId))
         .rejects.toThrow('Failed to get validators');
+    });
+  });
+
+  describe('Additional ValidatorRegistry API Coverage', () => {
+    let contract: any;
+    beforeEach(() => {
+      contract = {
+        getValidatorAssetTypes: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+        getSupportedAssetTypes: jest.fn<() => Promise<number[]>>().mockResolvedValue([1, 2]),
+        updateValidatorName: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+        updateValidatorStatus: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+        removeValidator: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+        runner: { provider }
+      };
+    });
+
+    it('should get validator asset types', async () => {
+      await validatorRegistryApi.getValidatorAssetTypes(contract, '0xabc');
+      expect(contract.getValidatorAssetTypes).toHaveBeenCalledWith('0xabc');
+    });
+
+    it('should get supported asset types', async () => {
+      const result = await validatorRegistryApi.getSupportedAssetTypes(contract, '0xabc');
+      expect(contract.getSupportedAssetTypes).toHaveBeenCalledWith('0xabc');
+      expect(result).toEqual([1, 2]);
+    });
+
+    it('should update validator name', async () => {
+      await validatorRegistryApi.updateValidatorName(contract, '0xabc', 'New Name');
+      expect(contract.updateValidatorName).toHaveBeenCalledWith('0xabc', 'New Name');
+    });
+
+    it('should update validator status', async () => {
+      await validatorRegistryApi.updateValidatorStatus(contract, '0xabc', true);
+      expect(contract.updateValidatorStatus).toHaveBeenCalledWith('0xabc', true);
+    });
+
+    it('should remove validator', async () => {
+      await validatorRegistryApi.removeValidator(contract, '0xabc');
+      expect(contract.removeValidator).toHaveBeenCalledWith('0xabc');
     });
   });
 }); 

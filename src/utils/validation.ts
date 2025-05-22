@@ -334,11 +334,11 @@ export class ValidationSystem {
    * @throws ValidationError if hash is invalid
    */
   static validateIpfsHash(hash: string, field: string): void {
-    // Basic IPFS hash validation (CID v0 or v1)
+    // Support for CID v0 (Qm...) and CID v1 (b... or B... or z... or F...)
     const ipfsHashRegex = /^(Qm[1-9A-HJ-NP-Za-km-z]{44}|b[A-Za-z2-7]{58}|B[A-Z2-7]{58}|z[1-9A-HJ-NP-Za-km-z]{48}|F[0-9A-F]{50})$/;
     if (!ipfsHashRegex.test(hash)) {
       throw new ValidationError(
-        'Invalid IPFS hash format',
+        'Invalid IPFS hash format. Must be a valid CID v0 (Qm...) or CID v1 (b..., B..., z..., or F...)',
         field,
         { hash }
       );
@@ -361,5 +361,95 @@ export class ValidationSystem {
         { json }
       );
     }
+  }
+
+  /**
+   * Validate asset type
+   * @param assetType Asset type to validate
+   * @param field Field name for error message
+   * @throws ValidationError if asset type is invalid
+   */
+  static validateAssetType(assetType: number, field: string): void {
+    if (assetType < 0 || assetType > 3) { // Assuming 0-3 are valid asset types
+      throw new ValidationError(
+        `${field} must be a valid asset type (0-3)`,
+        field,
+        { value: assetType }
+      );
+    }
+  }
+
+  /**
+   * Validate document type
+   * @param docType Document type to validate
+   * @param field Field name for error message
+   * @throws ValidationError if document type is invalid
+   */
+  static validateDocumentType(docType: string, field: string): void {
+    this.validateString(docType, field);
+    if (docType.length > 32) {
+      throw new ValidationError(
+        `${field} must be 32 characters or less`,
+        field,
+        { value: docType }
+      );
+    }
+  }
+
+  /**
+   * Validate image URLs
+   * @param urls Array of image URLs to validate
+   * @param field Field name for error message
+   * @throws ValidationError if any URL is invalid
+   */
+  static validateImageUrls(urls: string[], field: string): void {
+    this.validateArrayNotEmpty(urls, field);
+    urls.forEach((url, index) => {
+      this.validateUrl(url, `${field}[${index}]`);
+    });
+  }
+
+  /**
+   * Validate background color
+   * @param color Background color to validate
+   * @param field Field name for error message
+   * @throws ValidationError if color is invalid
+   */
+  static validateBackgroundColor(color: string, field: string): void {
+    this.validateString(color, field);
+    if (!/^#[0-9A-Fa-f]{6}$/.test(color)) {
+      throw new ValidationError(
+        `${field} must be a valid hex color (e.g., #RRGGBB)`,
+        field,
+        { value: color }
+      );
+    }
+  }
+
+  /**
+   * Validate animation URL
+   * @param url Animation URL to validate
+   * @param field Field name for error message
+   * @throws ValidationError if URL is invalid
+   */
+  static validateAnimationUrl(url: string, field: string): void {
+    this.validateUrl(url, field);
+    if (!url.match(/\.(mp4|webm|gif)$/i)) {
+      throw new ValidationError(
+        `${field} must be a valid animation file (mp4, webm, or gif)`,
+        field,
+        { value: url }
+      );
+    }
+  }
+
+  /**
+   * Validate external link
+   * @param link External link to validate
+   * @param field Field name for error message
+   * @throws ValidationError if link is invalid
+   */
+  static validateExternalLink(link: string, field: string): void {
+    this.validateUrl(link, field);
   }
 } 

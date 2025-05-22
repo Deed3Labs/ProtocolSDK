@@ -1,10 +1,11 @@
 import { ethers } from 'ethers';
 
-export * from './IDeedNFT';
-export * from './IFundManager';
-export * from './IMetadataRenderer';
-export * from './IValidator';
-export * from './IValidatorRegistry';
+// Export all contract interfaces
+export { IDeedNFTInterface, IDeedNFTContract } from './IDeedNFT';
+export { IFundManagerInterface, IFundManagerContract } from './IFundManager';
+export { IMetadataRendererInterface, IMetadataRendererContract } from './IMetadataRenderer';
+export { IValidatorInterface, IValidatorContract } from './IValidator';
+export { IValidatorRegistryInterface, IValidatorRegistryContract } from './IValidatorRegistry';
 
 // Contract types
 export interface ContractConfig {

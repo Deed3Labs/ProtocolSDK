@@ -1,5 +1,35 @@
 import { ethers } from 'ethers';
 
+export interface IValidatorInterface extends ethers.Interface {
+  functions: {
+    validateDeed(tokenId: ethers.BigNumberish): Promise<ethers.ContractTransaction>;
+    validateOperatingAgreement(uri: string): Promise<ethers.ContractTransaction>;
+    getValidationCriteria(assetTypeId: number): Promise<{
+      requiredTraits: string[];
+      additionalCriteria: string;
+      requireOperatingAgreement: boolean;
+      requireDefinition: boolean;
+    }>;
+    setValidationCriteria(
+      assetTypeId: number,
+      requiredTraits: string[],
+      additionalCriteria: string,
+      requireOperatingAgreement: boolean,
+      requireDefinition: boolean
+    ): Promise<ethers.ContractTransaction>;
+    registerOperatingAgreement(uri: string, name: string): Promise<ethers.ContractTransaction>;
+    defaultOperatingAgreement(): Promise<string>;
+    addWhitelistedToken(token: string): Promise<ethers.ContractTransaction>;
+    removeWhitelistedToken(token: string): Promise<ethers.ContractTransaction>;
+    isTokenWhitelisted(token: string): Promise<boolean>;
+    getServiceFee(token: string): Promise<ethers.BigNumberish>;
+    setServiceFee(token: string, fee: ethers.BigNumberish): Promise<ethers.ContractTransaction>;
+    withdrawServiceFees(token: string): Promise<ethers.ContractTransaction>;
+  };
+}
+
+export type IValidatorContract = ethers.Contract & IValidatorInterface;
+
 export const IValidator = {
   abi: [
     {
@@ -226,7 +256,4 @@ export const IValidator = {
   deployedBytecode: "0x",
   linkReferences: {},
   deployedLinkReferences: {}
-};
-
-export type IValidatorInterface = ethers.Interface;
-export type IValidatorContract = ethers.Contract; 
+}; 

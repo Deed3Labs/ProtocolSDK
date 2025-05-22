@@ -22,7 +22,7 @@ import {
   setValidationCriteria,
   registerOperatingAgreement,
   operatingAgreementName,
-  defaultOperatingAgreement,
+  getDefaultOperatingAgreement,
   addWhitelistedToken,
   removeWhitelistedToken,
   isTokenWhitelisted,
@@ -38,7 +38,7 @@ import {
   removeCompatibleDeedNFT,
   isCompatibleDeedNFT
 } from '../../api/validator';
-import { IValidator } from '../../contracts/IValidator';
+import { IValidatorContract } from '../../contracts/IValidator';
 import { TransactionManager } from '../../utils/transactionManager';
 import { getContractAddresses } from '../../config/contracts';
 import { ChainId } from '../../types/network';
@@ -90,12 +90,12 @@ describe('Validator API', () => {
     // Mock contract methods
     jest.spyOn(validator, 'validateDeed').mockResolvedValue(true);
     jest.spyOn(validator, 'validateOperatingAgreement').mockResolvedValue(true);
-    jest.spyOn(validator, 'getValidationCriteria').mockResolvedValue([
-      ['trait1', 'trait2'],
-      JSON.stringify({ minValue: '1000000000000000000', maxValue: '100000000000000000000' }),
-      true,
-      true
-    ]);
+    jest.spyOn(validator, 'getValidationCriteria').mockResolvedValue({
+      requiredTraits: ['trait1', 'trait2'],
+      additionalCriteria: JSON.stringify({ minValue: '1000000000000000000', maxValue: '100000000000000000000' }),
+      requireOperatingAgreement: true,
+      requireDefinition: true
+    });
     jest.spyOn(validator, 'defaultOperatingAgreement').mockResolvedValue('ipfs://default');
     
     // Track whitelisted tokens
@@ -171,7 +171,7 @@ describe('Validator API', () => {
     it('should validate a deed', async () => {
       const deedId = 1;
       const result = await executeContractTransaction(
-        validatorContract,
+        validatorContract as IValidatorContract,
         'validateDeed',
         [deedId]
       );
@@ -188,12 +188,11 @@ describe('Validator API', () => {
   describe('Validation Criteria', () => {
     it('should get validation criteria for an asset type', async () => {
       const assetTypeId = 1;
-      const [requiredTraits, additionalCriteria, requireOperatingAgreement, requireDefinition] = 
-        await getValidationCriteria(validator, assetTypeId);
-      expect(Array.isArray(requiredTraits)).toBe(true);
-      expect(typeof additionalCriteria).toBe('string');
-      expect(typeof requireOperatingAgreement).toBe('boolean');
-      expect(typeof requireDefinition).toBe('boolean');
+      const criteria = await getValidationCriteria(validator, assetTypeId);
+      expect(Array.isArray(criteria.requiredTraits)).toBe(true);
+      expect(typeof criteria.additionalCriteria).toBe('string');
+      expect(typeof criteria.requireOperatingAgreement).toBe('boolean');
+      expect(typeof criteria.requireDefinition).toBe('boolean');
     });
 
     it('should set validation criteria', async () => {
@@ -225,7 +224,7 @@ describe('Validator API', () => {
     });
 
     it('should get default operating agreement', async () => {
-      const result = await defaultOperatingAgreement(validator);
+      const result = await getDefaultOperatingAgreement(validator);
       expect(typeof result).toBe('string');
     });
   });

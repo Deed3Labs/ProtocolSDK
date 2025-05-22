@@ -1,39 +1,34 @@
 /**
  * @file MetadataRenderer API
  * @description This module provides functions to interact with the MetadataRenderer smart contract.
- * It handles all operations related to token metadata, including URIs, traits, features, conditions,
- * legal information, documents, gallery, and animations.
+ * It handles all operations related to metadata rendering, trait management, and document handling.
  * 
  * @module MetadataRenderer
  */
 
 import { ethers } from 'ethers';
-import { IMetadataRenderer as IMetadataRendererContract } from '../contracts/IMetadataRenderer';
+import { IMetadataRendererContract } from '../contracts';
+import { TransactionManager, TransactionResult } from '../utils/transactionManager';
 
 /**
  * @function tokenURI
- * @description Retrieves the URI for a specific token's metadata
+ * @description Gets the metadata URI for a token
  * @param {ethers.Contract} contract - The MetadataRenderer contract instance
  * @param {number} tokenId - The ID of the token
- * @returns {Promise<string>} The token's URI
+ * @returns {Promise<string>} The metadata URI
  */
-export async function tokenURI(contract: ethers.Contract, tokenId: number): Promise<string> {
+export async function tokenURI(contract: IMetadataRendererContract, tokenId: number): Promise<string> {
   return await contract.tokenURI(tokenId);
 }
 
 /**
- * @function syncTraitUpdate
- * @description Updates a specific trait for a token
+ * @function contractURI
+ * @description Gets the contract URI
  * @param {ethers.Contract} contract - The MetadataRenderer contract instance
- * @param {number} tokenId - The ID of the token
- * @param {string} traitKey - The key of the trait to update
- * @param {string} traitValue - The new value for the trait
- * @returns {Promise<void>}
- * @throws {Error} If the trait update fails
+ * @returns {Promise<string>} The contract URI
  */
-export async function syncTraitUpdate(contract: ethers.Contract, tokenId: number, traitKey: string, traitValue: string): Promise<void> {
-  const tx = await contract.syncTraitUpdate(tokenId, traitKey, traitValue);
-  await tx.wait();
+export async function contractURI(contract: IMetadataRendererContract): Promise<string> {
+  return await contract.contractURI();
 }
 
 /**
@@ -41,93 +36,125 @@ export async function syncTraitUpdate(contract: ethers.Contract, tokenId: number
  * @description Sets custom metadata for a token
  * @param {ethers.Contract} contract - The MetadataRenderer contract instance
  * @param {number} tokenId - The ID of the token
- * @param {string} metadata - The custom metadata string
- * @returns {Promise<void>}
- * @throws {Error} If setting the metadata fails
+ * @param {string} metadata - The custom metadata
+ * @returns {Promise<TransactionResult>}
  */
-export async function setTokenCustomMetadata(contract: ethers.Contract, tokenId: number, metadata: string): Promise<void> {
+export async function setTokenCustomMetadata(
+  contract: IMetadataRendererContract,
+  tokenId: number,
+  metadata: string
+): Promise<TransactionResult> {
   const tx = await contract.setTokenCustomMetadata(tokenId, metadata);
-  await tx.wait();
+  const manager = new TransactionManager(contract.runner?.provider!);
+  return await manager.sendTransaction(tx);
 }
 
 /**
  * @function setTokenFeatures
- * @description Sets the features for a token
+ * @description Sets features for a token
  * @param {ethers.Contract} contract - The MetadataRenderer contract instance
  * @param {number} tokenId - The ID of the token
  * @param {string[]} features - Array of feature strings
- * @returns {Promise<void>}
- * @throws {Error} If setting the features fails
+ * @returns {Promise<TransactionResult>}
  */
-export async function setTokenFeatures(contract: ethers.Contract, tokenId: number, features: string[]): Promise<void> {
+export async function setTokenFeatures(
+  contract: IMetadataRendererContract,
+  tokenId: number,
+  features: string[]
+): Promise<TransactionResult> {
   const tx = await contract.setTokenFeatures(tokenId, features);
-  await tx.wait();
+  const manager = new TransactionManager(contract.runner?.provider!);
+  return await manager.sendTransaction(tx);
 }
 
 /**
  * @function getTokenFeatures
- * @description Gets the features for a token
+ * @description Gets features for a token
  * @param {ethers.Contract} contract - The MetadataRenderer contract instance
  * @param {number} tokenId - The ID of the token
  * @returns {Promise<string[]>} Array of feature strings
  */
-export async function getTokenFeatures(contract: ethers.Contract, tokenId: number): Promise<string[]> {
+export async function getTokenFeatures(
+  contract: IMetadataRendererContract,
+  tokenId: number
+): Promise<string[]> {
   return await contract.getTokenFeatures(tokenId);
 }
 
 /**
  * @function setAssetCondition
- * @description Sets the condition information for an asset
+ * @description Sets condition information for an asset
  * @param {ethers.Contract} contract - The MetadataRenderer contract instance
  * @param {number} tokenId - The ID of the token
- * @param {string} generalCondition - The general condition description
- * @param {string} lastInspectionDate - The date of the last inspection
+ * @param {string} generalCondition - General condition rating
+ * @param {string} lastInspectionDate - Date of last inspection
  * @param {string[]} knownIssues - Array of known issues
- * @param {string[]} improvements - Array of improvements made
- * @param {string} additionalNotes - Any additional notes about the condition
- * @returns {Promise<void>}
- * @throws {Error} If setting the asset condition fails
+ * @param {string[]} improvements - Array of improvements
+ * @param {string} additionalNotes - Additional notes
+ * @returns {Promise<TransactionResult>}
  */
 export async function setAssetCondition(
-  contract: ethers.Contract,
+  contract: IMetadataRendererContract,
   tokenId: number,
   generalCondition: string,
   lastInspectionDate: string,
   knownIssues: string[],
   improvements: string[],
   additionalNotes: string
-): Promise<void> {
-  const tx = await contract.setAssetCondition(tokenId, generalCondition, lastInspectionDate, knownIssues, improvements, additionalNotes);
-  await tx.wait();
+): Promise<TransactionResult> {
+  const tx = await contract.setAssetCondition(
+    tokenId,
+    generalCondition,
+    lastInspectionDate,
+    knownIssues,
+    improvements,
+    additionalNotes
+  );
+  const manager = new TransactionManager(contract.runner?.provider!);
+  return await manager.sendTransaction(tx);
 }
 
 /**
  * @function getAssetCondition
- * @description Gets the condition information for an asset
+ * @description Gets condition information for an asset
  * @param {ethers.Contract} contract - The MetadataRenderer contract instance
  * @param {number} tokenId - The ID of the token
- * @returns {Promise<[string, string, string[], string[], string]>} Tuple containing condition information
+ * @returns {Promise<{
+ *   generalCondition: string,
+ *   lastInspectionDate: string,
+ *   knownIssues: string[],
+ *   improvements: string[],
+ *   additionalNotes: string
+ * }>} The condition information
  */
-export async function getAssetCondition(contract: ethers.Contract, tokenId: number): Promise<[string, string, string[], string[], string]> {
+export async function getAssetCondition(
+  contract: IMetadataRendererContract,
+  tokenId: number
+): Promise<{
+  generalCondition: string;
+  lastInspectionDate: string;
+  knownIssues: string[];
+  improvements: string[];
+  additionalNotes: string;
+}> {
   return await contract.getAssetCondition(tokenId);
 }
 
 /**
  * @function setTokenLegalInfo
- * @description Sets the legal information for a token
+ * @description Sets legal information for a token
  * @param {ethers.Contract} contract - The MetadataRenderer contract instance
  * @param {number} tokenId - The ID of the token
- * @param {string} jurisdiction - The legal jurisdiction
- * @param {string} registrationNumber - The registration number
- * @param {string} registrationDate - The registration date
- * @param {string[]} documents - Array of document references
+ * @param {string} jurisdiction - Legal jurisdiction
+ * @param {string} registrationNumber - Official registration number
+ * @param {string} registrationDate - Date of registration
+ * @param {string[]} documents - Array of legal documents
  * @param {string[]} restrictions - Array of legal restrictions
- * @param {string} additionalInfo - Any additional legal information
- * @returns {Promise<void>}
- * @throws {Error} If setting the legal information fails
+ * @param {string} additionalInfo - Additional legal information
+ * @returns {Promise<TransactionResult>}
  */
 export async function setTokenLegalInfo(
-  contract: ethers.Contract,
+  contract: IMetadataRendererContract,
   tokenId: number,
   jurisdiction: string,
   registrationNumber: string,
@@ -135,47 +162,83 @@ export async function setTokenLegalInfo(
   documents: string[],
   restrictions: string[],
   additionalInfo: string
-): Promise<void> {
-  const tx = await contract.setTokenLegalInfo(tokenId, jurisdiction, registrationNumber, registrationDate, documents, restrictions, additionalInfo);
-  await tx.wait();
+): Promise<TransactionResult> {
+  const tx = await contract.setTokenLegalInfo(
+    tokenId,
+    jurisdiction,
+    registrationNumber,
+    registrationDate,
+    documents,
+    restrictions,
+    additionalInfo
+  );
+  const manager = new TransactionManager(contract.runner?.provider!);
+  return await manager.sendTransaction(tx);
 }
 
 /**
  * @function getTokenLegalInfo
- * @description Gets the legal information for a token
+ * @description Gets legal information for a token
  * @param {ethers.Contract} contract - The MetadataRenderer contract instance
  * @param {number} tokenId - The ID of the token
- * @returns {Promise<[string, string, string, string[], string[], string]>} Tuple containing legal information
+ * @returns {Promise<{
+ *   jurisdiction: string,
+ *   registrationNumber: string,
+ *   registrationDate: string,
+ *   documents: string[],
+ *   restrictions: string[],
+ *   additionalInfo: string
+ * }>} The legal information
  */
-export async function getTokenLegalInfo(contract: ethers.Contract, tokenId: number): Promise<[string, string, string, string[], string[], string]> {
+export async function getTokenLegalInfo(
+  contract: IMetadataRendererContract,
+  tokenId: number
+): Promise<{
+  jurisdiction: string;
+  registrationNumber: string;
+  registrationDate: string;
+  documents: string[];
+  restrictions: string[];
+  additionalInfo: string;
+}> {
   return await contract.getTokenLegalInfo(tokenId);
 }
 
 /**
  * @function manageTokenDocument
- * @description Adds or removes a document for a token
+ * @description Manages a token's document
  * @param {ethers.Contract} contract - The MetadataRenderer contract instance
  * @param {number} tokenId - The ID of the token
- * @param {string} docType - The type of document
- * @param {string} documentURI - The URI of the document
- * @param {boolean} isRemove - Whether to remove the document (true) or add it (false)
- * @returns {Promise<void>}
- * @throws {Error} If managing the document fails
+ * @param {string} docType - The document type
+ * @param {string} documentURI - The document URI
+ * @param {boolean} isRemove - Whether to remove the document
+ * @returns {Promise<TransactionResult>}
  */
-export async function manageTokenDocument(contract: ethers.Contract, tokenId: number, docType: string, documentURI: string, isRemove: boolean): Promise<void> {
+export async function manageTokenDocument(
+  contract: IMetadataRendererContract,
+  tokenId: number,
+  docType: string,
+  documentURI: string,
+  isRemove: boolean
+): Promise<TransactionResult> {
   const tx = await contract.manageTokenDocument(tokenId, docType, documentURI, isRemove);
-  await tx.wait();
+  const manager = new TransactionManager(contract.runner?.provider!);
+  return await manager.sendTransaction(tx);
 }
 
 /**
  * @function getTokenDocument
- * @description Gets a specific document for a token
+ * @description Gets a token's document URI
  * @param {ethers.Contract} contract - The MetadataRenderer contract instance
  * @param {number} tokenId - The ID of the token
- * @param {string} docType - The type of document to retrieve
+ * @param {string} docType - The document type
  * @returns {Promise<string>} The document URI
  */
-export async function getTokenDocument(contract: ethers.Contract, tokenId: number, docType: string): Promise<string> {
+export async function getTokenDocument(
+  contract: IMetadataRendererContract,
+  tokenId: number,
+  docType: string
+): Promise<string> {
   return await contract.getTokenDocument(tokenId, docType);
 }
 
@@ -186,7 +249,10 @@ export async function getTokenDocument(contract: ethers.Contract, tokenId: numbe
  * @param {number} tokenId - The ID of the token
  * @returns {Promise<string[]>} Array of document types
  */
-export async function getTokenDocumentTypes(contract: ethers.Contract, tokenId: number): Promise<string[]> {
+export async function getTokenDocumentTypes(
+  contract: IMetadataRendererContract,
+  tokenId: number
+): Promise<string[]> {
   return await contract.getTokenDocumentTypes(tokenId);
 }
 
@@ -195,35 +261,113 @@ export async function getTokenDocumentTypes(contract: ethers.Contract, tokenId: 
  * @description Gets all documents for a token
  * @param {ethers.Contract} contract - The MetadataRenderer contract instance
  * @param {number} tokenId - The ID of the token
- * @returns {Promise<any[]>} Array of document information
+ * @returns {Promise<Array<{docType: string, documentURI: string}>>} Array of documents
  */
-export async function getTokenDocuments(contract: ethers.Contract, tokenId: number): Promise<any[]> {
+export async function getTokenDocuments(
+  contract: IMetadataRendererContract,
+  tokenId: number
+): Promise<Array<{ docType: string; documentURI: string }>> {
   return await contract.getTokenDocuments(tokenId);
 }
 
 /**
  * @function setTokenGallery
- * @description Sets the gallery images for a token
+ * @description Sets the token gallery
  * @param {ethers.Contract} contract - The MetadataRenderer contract instance
  * @param {number} tokenId - The ID of the token
  * @param {string[]} imageUrls - Array of image URLs
- * @returns {Promise<void>}
- * @throws {Error} If setting the gallery fails
+ * @returns {Promise<TransactionResult>}
  */
-export async function setTokenGallery(contract: ethers.Contract, tokenId: number, imageUrls: string[]): Promise<void> {
+export async function setTokenGallery(
+  contract: IMetadataRendererContract,
+  tokenId: number,
+  imageUrls: string[]
+): Promise<TransactionResult> {
   const tx = await contract.setTokenGallery(tokenId, imageUrls);
-  await tx.wait();
+  const manager = new TransactionManager(contract.runner?.provider!);
+  return await manager.sendTransaction(tx);
 }
 
 /**
  * @function getTokenGallery
- * @description Gets the gallery images for a token
+ * @description Gets the token gallery
  * @param {ethers.Contract} contract - The MetadataRenderer contract instance
  * @param {number} tokenId - The ID of the token
  * @returns {Promise<string[]>} Array of image URLs
  */
-export async function getTokenGallery(contract: ethers.Contract, tokenId: number): Promise<string[]> {
+export async function getTokenGallery(
+  contract: IMetadataRendererContract,
+  tokenId: number
+): Promise<string[]> {
   return await contract.getTokenGallery(tokenId);
+}
+
+/**
+ * @function setDeedNFT
+ * @description Sets the DeedNFT contract address
+ * @param {ethers.Contract} contract - The MetadataRenderer contract instance
+ * @param {string} deedNFT - The DeedNFT contract address
+ * @returns {Promise<TransactionResult>}
+ */
+export async function setDeedNFT(
+  contract: IMetadataRendererContract,
+  deedNFT: string
+): Promise<TransactionResult> {
+  const tx = await contract.setDeedNFT(deedNFT);
+  const manager = new TransactionManager(contract.runner?.provider!);
+  return await manager.sendTransaction(tx);
+}
+
+/**
+ * @function setAssetTypeImageURI
+ * @description Sets the default image URI for an asset type
+ * @param {ethers.Contract} contract - The MetadataRenderer contract instance
+ * @param {number} assetType - The asset type
+ * @param {string} imageURI - The image URI
+ * @returns {Promise<TransactionResult>}
+ */
+export async function setAssetTypeImageURI(
+  contract: IMetadataRendererContract,
+  assetType: number,
+  imageURI: string
+): Promise<TransactionResult> {
+  const tx = await contract.setAssetTypeImageURI(assetType, imageURI);
+  const manager = new TransactionManager(contract.runner?.provider!);
+  return await manager.sendTransaction(tx);
+}
+
+/**
+ * @function setAssetTypeBackgroundColor
+ * @description Sets the default background color for an asset type
+ * @param {ethers.Contract} contract - The MetadataRenderer contract instance
+ * @param {number} assetType - The asset type
+ * @param {string} backgroundColor - The background color
+ * @returns {Promise<TransactionResult>}
+ */
+export async function setAssetTypeBackgroundColor(
+  contract: IMetadataRendererContract,
+  assetType: number,
+  backgroundColor: string
+): Promise<TransactionResult> {
+  const tx = await contract.setAssetTypeBackgroundColor(assetType, backgroundColor);
+  const manager = new TransactionManager(contract.runner?.provider!);
+  return await manager.sendTransaction(tx);
+}
+
+/**
+ * @function setInvalidatedImageURI
+ * @description Sets the default image URI for invalidated assets
+ * @param {ethers.Contract} contract - The MetadataRenderer contract instance
+ * @param {string} imageURI - The image URI
+ * @returns {Promise<TransactionResult>}
+ */
+export async function setInvalidatedImageURI(
+  contract: IMetadataRendererContract,
+  imageURI: string
+): Promise<TransactionResult> {
+  const tx = await contract.setInvalidatedImageURI(imageURI);
+  const manager = new TransactionManager(contract.runner?.provider!);
+  return await manager.sendTransaction(tx);
 }
 
 /**
@@ -231,13 +375,17 @@ export async function getTokenGallery(contract: ethers.Contract, tokenId: number
  * @description Sets the animation URL for a token
  * @param {ethers.Contract} contract - The MetadataRenderer contract instance
  * @param {number} tokenId - The ID of the token
- * @param {string} animationURL - The URL of the animation
- * @returns {Promise<void>}
- * @throws {Error} If setting the animation URL fails
+ * @param {string} animationURL - The animation URL
+ * @returns {Promise<TransactionResult>}
  */
-export async function setTokenAnimationURL(contract: ethers.Contract, tokenId: number, animationURL: string): Promise<void> {
+export async function setTokenAnimationURL(
+  contract: IMetadataRendererContract,
+  tokenId: number,
+  animationURL: string
+): Promise<TransactionResult> {
   const tx = await contract.setTokenAnimationURL(tokenId, animationURL);
-  await tx.wait();
+  const manager = new TransactionManager(contract.runner?.provider!);
+  return await manager.sendTransaction(tx);
 }
 
 /**
@@ -245,13 +393,17 @@ export async function setTokenAnimationURL(contract: ethers.Contract, tokenId: n
  * @description Sets the external link for a token
  * @param {ethers.Contract} contract - The MetadataRenderer contract instance
  * @param {number} tokenId - The ID of the token
- * @param {string} externalLink - The external link URL
- * @returns {Promise<void>}
- * @throws {Error} If setting the external link fails
+ * @param {string} externalLink - The external link
+ * @returns {Promise<TransactionResult>}
  */
-export async function setTokenExternalLink(contract: ethers.Contract, tokenId: number, externalLink: string): Promise<void> {
+export async function setTokenExternalLink(
+  contract: IMetadataRendererContract,
+  tokenId: number,
+  externalLink: string
+): Promise<TransactionResult> {
   const tx = await contract.setTokenExternalLink(tokenId, externalLink);
-  await tx.wait();
+  const manager = new TransactionManager(contract.runner?.provider!);
+  return await manager.sendTransaction(tx);
 }
 
 /**
@@ -261,7 +413,10 @@ export async function setTokenExternalLink(contract: ethers.Contract, tokenId: n
  * @param {number} tokenId - The ID of the token
  * @returns {Promise<string>} The animation URL
  */
-export async function getTokenAnimationURL(contract: ethers.Contract, tokenId: number): Promise<string> {
+export async function getTokenAnimationURL(
+  contract: IMetadataRendererContract,
+  tokenId: number
+): Promise<string> {
   return await contract.getTokenAnimationURL(tokenId);
 }
 
@@ -270,62 +425,31 @@ export async function getTokenAnimationURL(contract: ethers.Contract, tokenId: n
  * @description Gets the external link for a token
  * @param {ethers.Contract} contract - The MetadataRenderer contract instance
  * @param {number} tokenId - The ID of the token
- * @returns {Promise<string>} The external link URL
+ * @returns {Promise<string>} The external link
  */
-export async function getTokenExternalLink(contract: ethers.Contract, tokenId: number): Promise<string> {
+export async function getTokenExternalLink(
+  contract: IMetadataRendererContract,
+  tokenId: number
+): Promise<string> {
   return await contract.getTokenExternalLink(tokenId);
 }
 
 /**
- * @function setDeedNFT
- * @description Sets the DeedNFT contract address
+ * @function syncTraitUpdate
+ * @description Syncs metadata with DeedNFT trait updates
  * @param {ethers.Contract} contract - The MetadataRenderer contract instance
- * @param {string} deedNFT - The address of the DeedNFT contract
- * @returns {Promise<void>}
- * @throws {Error} If setting the DeedNFT contract fails
+ * @param {number} tokenId - The ID of the token
+ * @param {string} traitKey - Key of the updated trait
+ * @param {string} traitValue - New value of the trait
+ * @returns {Promise<TransactionResult>}
  */
-export async function setDeedNFT(contract: ethers.Contract, deedNFT: string): Promise<void> {
-  const tx = await contract.setDeedNFT(deedNFT);
-  await tx.wait();
-}
-
-/**
- * @function setAssetTypeImageURI
- * @description Sets the image URI for an asset type
- * @param {ethers.Contract} contract - The MetadataRenderer contract instance
- * @param {number} assetType - The asset type identifier
- * @param {string} imageURI - The image URI to set
- * @returns {Promise<void>}
- * @throws {Error} If setting the image URI fails
- */
-export async function setAssetTypeImageURI(contract: ethers.Contract, assetType: number, imageURI: string): Promise<void> {
-  const tx = await contract.setAssetTypeImageURI(assetType, imageURI);
-  await tx.wait();
-}
-
-/**
- * @function setAssetTypeBackgroundColor
- * @description Sets the background color for an asset type
- * @param {ethers.Contract} contract - The MetadataRenderer contract instance
- * @param {number} assetType - The asset type identifier
- * @param {string} backgroundColor - The background color to set
- * @returns {Promise<void>}
- * @throws {Error} If setting the background color fails
- */
-export async function setAssetTypeBackgroundColor(contract: ethers.Contract, assetType: number, backgroundColor: string): Promise<void> {
-  const tx = await contract.setAssetTypeBackgroundColor(assetType, backgroundColor);
-  await tx.wait();
-}
-
-/**
- * @function setInvalidatedImageURI
- * @description Sets the image URI for invalidated tokens
- * @param {ethers.Contract} contract - The MetadataRenderer contract instance
- * @param {string} imageURI - The image URI to set for invalidated tokens
- * @returns {Promise<void>}
- * @throws {Error} If setting the invalidated image URI fails
- */
-export async function setInvalidatedImageURI(contract: ethers.Contract, imageURI: string): Promise<void> {
-  const tx = await contract.setInvalidatedImageURI(imageURI);
-  await tx.wait();
+export async function syncTraitUpdate(
+  contract: IMetadataRendererContract,
+  tokenId: number,
+  traitKey: string,
+  traitValue: string
+): Promise<TransactionResult> {
+  const tx = await contract.syncTraitUpdate(tokenId, traitKey, traitValue);
+  const manager = new TransactionManager(contract.runner?.provider!);
+  return await manager.sendTransaction(tx);
 } 

@@ -513,4 +513,122 @@ export interface IMetadataRenderer extends ethers.BaseContract {
     restrictions: string[];
     additionalInfo: string;
   }>;
+
+  /**
+   * Gets the contract URI
+   * @returns Promise resolving to the contract URI
+   */
+  contractURI(): Promise<string>;
+
+  /**
+   * Manages a token's document
+   * @param tokenId - ID of the token
+   * @param docType - Document type
+   * @param documentURI - Document URI
+   * @param isRemove - Whether to remove the document
+   * @returns Promise resolving to the transaction
+   */
+  manageTokenDocument(
+    tokenId: ethers.BigNumberish,
+    docType: string,
+    documentURI: string,
+    isRemove: boolean
+  ): Promise<ethers.ContractTransaction>;
+
+  /**
+   * Gets a token's document URI
+   * @param tokenId - ID of the token
+   * @param docType - Document type
+   * @returns Promise resolving to the document URI
+   */
+  getTokenDocument(tokenId: ethers.BigNumberish, docType: string): Promise<string>;
+
+  /**
+   * Gets all document types for a token
+   * @param tokenId - ID of the token
+   * @returns Promise resolving to array of document types
+   */
+  getTokenDocumentTypes(tokenId: ethers.BigNumberish): Promise<string[]>;
+
+  /**
+   * Gets all documents for a token
+   * @param tokenId - ID of the token
+   * @returns Promise resolving to array of documents
+   */
+  getTokenDocuments(tokenId: ethers.BigNumberish): Promise<Array<{ docType: string; documentURI: string }>>;
+
+  /**
+   * Sets the token gallery
+   * @param tokenId - ID of the token
+   * @param imageUrls - Array of image URLs
+   * @returns Promise resolving to the transaction
+   */
+  setTokenGallery(tokenId: ethers.BigNumberish, imageUrls: string[]): Promise<ethers.ContractTransaction>;
+
+  /**
+   * Gets the token gallery
+   * @param tokenId - ID of the token
+   * @returns Promise resolving to array of image URLs
+   */
+  getTokenGallery(tokenId: ethers.BigNumberish): Promise<string[]>;
+
+  /**
+   * Sets the DeedNFT contract address
+   * @param deedNFT - DeedNFT contract address
+   * @returns Promise resolving to the transaction
+   */
+  setDeedNFT(deedNFT: string): Promise<ethers.ContractTransaction>;
+
+  /**
+   * Sets the default image URI for an asset type
+   * @param assetType - Asset type
+   * @param imageURI - Image URI
+   * @returns Promise resolving to the transaction
+   */
+  setAssetTypeImageURI(assetType: number, imageURI: string): Promise<ethers.ContractTransaction>;
+
+  /**
+   * Sets the default background color for an asset type
+   * @param assetType - Asset type
+   * @param backgroundColor - Background color
+   * @returns Promise resolving to the transaction
+   */
+  setAssetTypeBackgroundColor(assetType: number, backgroundColor: string): Promise<ethers.ContractTransaction>;
+
+  /**
+   * Sets the default image URI for invalidated assets
+   * @param imageURI - Image URI
+   * @returns Promise resolving to the transaction
+   */
+  setInvalidatedImageURI(imageURI: string): Promise<ethers.ContractTransaction>;
+
+  /**
+   * Sets the animation URL for a token
+   * @param tokenId - ID of the token
+   * @param animationURL - Animation URL
+   * @returns Promise resolving to the transaction
+   */
+  setTokenAnimationURL(tokenId: ethers.BigNumberish, animationURL: string): Promise<ethers.ContractTransaction>;
+
+  /**
+   * Sets the external link for a token
+   * @param tokenId - ID of the token
+   * @param externalLink - External link
+   * @returns Promise resolving to the transaction
+   */
+  setTokenExternalLink(tokenId: ethers.BigNumberish, externalLink: string): Promise<ethers.ContractTransaction>;
+
+  /**
+   * Gets the animation URL for a token
+   * @param tokenId - ID of the token
+   * @returns Promise resolving to the animation URL
+   */
+  getTokenAnimationURL(tokenId: ethers.BigNumberish): Promise<string>;
+
+  /**
+   * Gets the external link for a token
+   * @param tokenId - ID of the token
+   * @returns Promise resolving to the external link
+   */
+  getTokenExternalLink(tokenId: ethers.BigNumberish): Promise<string>;
 } 

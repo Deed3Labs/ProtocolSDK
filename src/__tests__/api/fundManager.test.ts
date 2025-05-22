@@ -9,6 +9,7 @@
 
 import { expect, jest } from '@jest/globals';
 import { ethers } from 'ethers';
+import { IFundManagerContract } from '../../contracts';
 import {
   mintDeedNFT,
   mintBatchDeedNFT,
@@ -17,15 +18,22 @@ import {
   setCommissionPercentage,
   setFeeReceiver,
   setValidatorRegistry,
-  setDeedNFT
+  setDeedNFT,
+  getCommissionPercentage,
+  commissionPercentage,
+  deedNFT,
+  formatFee,
+  collectCommission
 } from '../../api/fundManager';
 import { TEST_CONFIG, provider } from '../setup';
+import { TransactionManager } from '../../utils/transactionManager';
 
 /**
  * @description Test suite for the FundManager contract API
  */
 describe('FundManager API', () => {
-  let contract: ethers.Contract;
+  let contract: IFundManagerContract;
+  let transactionManager: TransactionManager;
   const validOwner = '0x1234567890123456789012345678901234567890';
   const validAssetType = 1;
   const validIpfsHash = 'QmWWQSuPMS6aXCbZKpEjPHPUZN2NjB3YrhJTHsV4X3vb2t';
@@ -41,6 +49,9 @@ describe('FundManager API', () => {
   const validFeeReceiver = '0xfedcba9876543210fedcba9876543210fedcba98';
   const validValidatorRegistry = '0x9876543210abcdef9876543210abcdef98765432';
   const validDeedNFT = '0xabcdef9876543210abcdef9876543210abcdef98';
+  const validFundId = 1;
+  const validAddress = '0x1234567890123456789012345678901234567890';
+  const validAmount = ethers.parseEther('1.0');
 
   /**
    * @description Sets up the test environment before each test
@@ -52,38 +63,79 @@ describe('FundManager API', () => {
     // Reset mocks
     jest.clearAllMocks();
 
+    // Initialize transaction manager
+    transactionManager = new TransactionManager(provider);
+
     // Create mock transaction response
     const mockTxResponse = {
       hash: '0x123',
+      from: '0x123',
+      to: '0x456',
+      status: 'confirmed' as const,
+      receipt: {
+        status: 1,
+        logs: [{
+          args: {
+            tokenId: validTokenId
+          }
+        }]
+      } as unknown as ethers.TransactionReceipt,
       wait: async () => ({
         status: 1,
         logs: [{
-          topics: ['0x0', '0x0', '0x0', '0x1'],
-          data: '0x'
+          args: {
+            tokenId: validTokenId
+          }
         }]
-      } as unknown as ethers.TransactionReceipt),
-      tokenId: validTokenId,
-      tokenIds: validTokenIds
+      } as unknown as ethers.TransactionReceipt)
+    } as unknown as ethers.TransactionResponse;
+
+    const mockBatchTxResponse = {
+      hash: '0x123',
+      from: '0x123',
+      to: '0x456',
+      status: 'confirmed' as const,
+      receipt: {
+        status: 1,
+        logs: [{
+          args: {
+            tokenIds: validTokenIds
+          }
+        }]
+      } as unknown as ethers.TransactionReceipt,
+      wait: async () => ({
+        status: 1,
+        logs: [{
+          args: {
+            tokenIds: validTokenIds
+          }
+        }]
+      } as unknown as ethers.TransactionReceipt)
     } as unknown as ethers.TransactionResponse;
 
     // Create mock contract with proper types
     contract = {
       // Read functions
       getCommissionBalance: jest.fn<() => Promise<number>>().mockResolvedValue(validCommissionBalance),
+      getCommissionPercentage: jest.fn<() => Promise<number>>().mockResolvedValue(validCommissionPercentage),
+      commissionPercentage: jest.fn<() => Promise<number>>().mockResolvedValue(validCommissionPercentage),
+      deedNFT: jest.fn<() => Promise<string>>().mockResolvedValue(validDeedNFT),
+      formatFee: jest.fn<() => Promise<string>>().mockResolvedValue('100'),
 
       // Write functions
       mintDeedNFT: jest.fn<() => Promise<ethers.TransactionResponse>>().mockResolvedValue(mockTxResponse),
-      mintBatchDeedNFT: jest.fn<() => Promise<ethers.TransactionResponse>>().mockResolvedValue(mockTxResponse),
+      mintBatchDeedNFT: jest.fn<() => Promise<ethers.TransactionResponse>>().mockResolvedValue(mockBatchTxResponse),
       withdrawValidatorFees: jest.fn<() => Promise<ethers.TransactionResponse>>().mockResolvedValue(mockTxResponse),
       setCommissionPercentage: jest.fn<() => Promise<ethers.TransactionResponse>>().mockResolvedValue(mockTxResponse),
       setFeeReceiver: jest.fn<() => Promise<ethers.TransactionResponse>>().mockResolvedValue(mockTxResponse),
       setValidatorRegistry: jest.fn<() => Promise<ethers.TransactionResponse>>().mockResolvedValue(mockTxResponse),
       setDeedNFT: jest.fn<() => Promise<ethers.TransactionResponse>>().mockResolvedValue(mockTxResponse),
+      collectCommission: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
 
       interface: {
         format: () => ({})
       }
-    } as unknown as ethers.Contract;
+    } as unknown as IFundManagerContract;
   });
 
   /**
@@ -106,7 +158,10 @@ describe('FundManager API', () => {
         validSalt
       );
 
-      expect(result).toBe(validTokenId);
+      if (!result.receipt) throw new Error('Transaction receipt is null');
+      const log = result.receipt.logs[0] as ethers.Log & { args: { tokenId: number } };
+      const tokenId = log.args.tokenId;
+      expect(tokenId).toBe(validTokenId);
       expect(contract.mintDeedNFT).toHaveBeenCalledWith(
         validOwner,
         validAssetType,
@@ -136,8 +191,11 @@ describe('FundManager API', () => {
         }
       ];
 
-      const result = await mintBatchDeedNFT(contract, deeds);
-      expect(result).toEqual(validTokenIds);
+      const tx = await mintBatchDeedNFT(contract, deeds);
+      if (!tx.receipt) throw new Error('Transaction receipt is null');
+      const log = tx.receipt.logs[0] as ethers.Log & { args: { tokenIds: number[] } };
+      const tokenIds = log.args.tokenIds;
+      expect(tokenIds).toEqual(validTokenIds);
       expect(contract.mintBatchDeedNFT).toHaveBeenCalledWith(deeds);
     });
 
@@ -145,18 +203,30 @@ describe('FundManager API', () => {
      * @description Tests handling of empty batch minting
      */
     it('should handle empty batch minting', async () => {
-      const emptyBatchResponse = {
+      const mockReceipt = {
+        status: 1,
+        logs: [{
+          args: {
+            tokenIds: []
+          }
+        }]
+      } as unknown as ethers.TransactionReceipt;
+
+      const mockTx = {
         hash: '0x123',
-        wait: async () => ({
-          status: 1,
-          logs: []
-        } as unknown as ethers.TransactionReceipt),
-        tokenIds: []
+        from: '0x123',
+        to: '0x456',
+        status: 'confirmed' as const,
+        receipt: mockReceipt,
+        wait: async () => mockReceipt
       } as unknown as ethers.TransactionResponse;
 
-      jest.spyOn(contract, 'mintBatchDeedNFT').mockResolvedValueOnce(emptyBatchResponse);
-      const result = await mintBatchDeedNFT(contract, []);
-      expect(result).toEqual([]);
+      jest.spyOn(contract, 'mintBatchDeedNFT').mockResolvedValueOnce(mockTx);
+      const tx = await mintBatchDeedNFT(contract, []);
+      if (!tx.receipt) throw new Error('Transaction receipt is null');
+      const log = tx.receipt.logs[0] as ethers.Log & { args: { tokenIds: number[] } };
+      const tokenIds = log.args.tokenIds;
+      expect(tokenIds).toEqual([]);
     });
 
     /**
@@ -186,8 +256,11 @@ describe('FundManager API', () => {
         }
       ];
 
-      const result = await mintBatchDeedNFT(contract, deeds);
-      expect(result).toEqual(validTokenIds);
+      const tx = await mintBatchDeedNFT(contract, deeds);
+      if (!tx.receipt) throw new Error('Transaction receipt is null');
+      const log = tx.receipt.logs[0] as ethers.Log & { args: { tokenIds: number[] } };
+      const tokenIds = log.args.tokenIds;
+      expect(tokenIds).toEqual(validTokenIds);
       expect(contract.mintBatchDeedNFT).toHaveBeenCalledWith(deeds);
     });
   });
@@ -363,6 +436,120 @@ describe('FundManager API', () => {
       jest.spyOn(contract, 'setDeedNFT').mockRejectedValue(new Error('Failed to set DeedNFT contract'));
       await expect(setDeedNFT(contract, validDeedNFT))
         .rejects.toThrow('Failed to set DeedNFT contract');
+    });
+  });
+
+  describe('getCommissionPercentage', () => {
+    it('should get the commission percentage', async () => {
+      const percentage = await getCommissionPercentage(contract);
+      expect(contract.getCommissionPercentage).toHaveBeenCalled();
+      expect(percentage).toBeDefined();
+    });
+  });
+
+  describe('commissionPercentage', () => {
+    it('should get the commission percentage', async () => {
+      const percentage = await commissionPercentage(contract);
+      expect(contract.commissionPercentage).toHaveBeenCalled();
+      expect(percentage).toBeDefined();
+    });
+  });
+
+  describe('deedNFT', () => {
+    it('should get the DeedNFT contract address', async () => {
+      const address = await deedNFT(contract);
+      expect(contract.deedNFT).toHaveBeenCalled();
+      expect(address).toBeDefined();
+    });
+  });
+
+  describe('formatFee', () => {
+    it('should format the fee', async () => {
+      const amount = 100;
+      const formattedFee = await formatFee(contract, amount);
+      expect(contract.formatFee).toHaveBeenCalledWith(amount);
+      expect(formattedFee).toBeDefined();
+    });
+  });
+
+  describe('collectCommission', () => {
+    it('should collect commission', async () => {
+      const tokenId = 1;
+      const amount = 100;
+      const token = '0x1234567890123456789012345678901234567890';
+      await collectCommission(contract, tokenId, amount, token);
+      expect(contract.collectCommission).toHaveBeenCalledWith(tokenId, amount, token);
+    });
+  });
+
+  describe('mintDeedNFT', () => {
+    it('should mint a deed NFT', async () => {
+      const owner = '0x1234567890123456789012345678901234567890';
+      const assetType = 0;
+      const ipfsDetailsHash = 'QmWWQSuPMS6aXCbZKpEjPHPUZN2NjB3YrhJTHsV4X3vb2t';
+      const definition = 'test';
+      const configuration = 'test';
+      const validatorContract = '0x1234567890123456789012345678901234567890';
+      const token = '0x1234567890123456789012345678901234567890';
+      const salt = 1;
+      const tokenId = await mintDeedNFT(contract, owner, assetType, ipfsDetailsHash, definition, configuration, validatorContract, token, salt);
+      expect(contract.mintDeedNFT).toHaveBeenCalledWith(owner, assetType, ipfsDetailsHash, definition, configuration, validatorContract, token, salt);
+      expect(tokenId).toBeDefined();
+    });
+  });
+
+  describe('mintBatchDeedNFT', () => {
+    it('should mint multiple deed NFTs', async () => {
+      const deeds = [
+        {
+          owner: '0x1234567890123456789012345678901234567890',
+          assetType: 0,
+          ipfsDetailsHash: 'QmWWQSuPMS6aXCbZKpEjPHPUZN2NjB3YrhJTHsV4X3vb2t',
+          definition: 'test',
+          configuration: 'test',
+          validatorContract: '0x1234567890123456789012345678901234567890',
+          token: '0x1234567890123456789012345678901234567890',
+          salt: 1
+        }
+      ];
+      const tx = await mintBatchDeedNFT(contract, deeds);
+      expect(contract.mintBatchDeedNFT).toHaveBeenCalledWith(deeds);
+      expect(tx).toBeDefined();
+    });
+  });
+
+  describe('getCommissionBalance', () => {
+    it('should get the commission balance', async () => {
+      const validator = '0x1234567890123456789012345678901234567890';
+      const token = '0x1234567890123456789012345678901234567890';
+      const balance = await getCommissionBalance(contract, validator, token);
+      expect(contract.getCommissionBalance).toHaveBeenCalledWith(validator, token);
+      expect(balance).toBeDefined();
+    });
+  });
+
+  describe('withdrawValidatorFees', () => {
+    it('should withdraw validator fees', async () => {
+      const validatorContract = '0x1234567890123456789012345678901234567890';
+      const token = '0x1234567890123456789012345678901234567890';
+      await withdrawValidatorFees(contract, validatorContract, token);
+      expect(contract.withdrawValidatorFees).toHaveBeenCalledWith(validatorContract, token);
+    });
+  });
+
+  describe('setCommissionPercentage', () => {
+    it('should set the commission percentage', async () => {
+      const percentage = 5;
+      await setCommissionPercentage(contract, percentage);
+      expect(contract.setCommissionPercentage).toHaveBeenCalledWith(percentage);
+    });
+  });
+
+  describe('setFeeReceiver', () => {
+    it('should set the fee receiver', async () => {
+      const feeReceiver = '0x1234567890123456789012345678901234567890';
+      await setFeeReceiver(contract, feeReceiver);
+      expect(contract.setFeeReceiver).toHaveBeenCalledWith(feeReceiver);
     });
   });
 }); 

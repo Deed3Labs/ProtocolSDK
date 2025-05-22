@@ -212,10 +212,12 @@ export const onValidatorRegistryUpdated = (
 };
 
 export const onDeedNFTUpdated = (
-  contract: ethers.Contract,
-  callback: (newDeedNFT: string) => void
+  contract: IDeedNFT,
+  callback: (tokenId: ethers.BigNumberish, uri: string, operatingAgreement: string, definition: string, configuration: string) => void
 ) => {
-  contract.on('DeedNFTUpdated', callback);
+  contract.on('DeedNFTUpdated', (tokenId, uri, operatingAgreement, definition, configuration) => {
+    callback(tokenId, uri, operatingAgreement, definition, configuration);
+  });
 };
 
 export const onServiceFeeCollected = (
@@ -330,4 +332,25 @@ export const onTokenExternalLinkUpdated = (
   callback: (tokenId: number, link: string) => void
 ) => {
   contract.on('TokenExternalLinkUpdated', callback);
+};
+
+export const onAssetTypeImageURIUpdated = (
+  contract: ethers.Contract,
+  callback: (assetType: number, imageURI: string) => void
+) => {
+  contract.on('AssetTypeImageURIUpdated', callback);
+};
+
+export const onAssetTypeBackgroundColorUpdated = (
+  contract: ethers.Contract,
+  callback: (assetType: number, backgroundColor: string) => void
+) => {
+  contract.on('AssetTypeBackgroundColorUpdated', callback);
+};
+
+export const onInvalidatedImageURIUpdated = (
+  contract: ethers.Contract,
+  callback: (imageURI: string) => void
+) => {
+  contract.on('InvalidatedImageURIUpdated', callback);
 }; 

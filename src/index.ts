@@ -7,12 +7,17 @@ import { ethers } from 'ethers';
 import { ChainId, NetworkConfig } from './types/network';
 import { getContractAddresses } from './config/contracts';
 import { ContractFactory } from './contracts';
-import { IDeedNFT, IFundManager, IValidator, IValidatorRegistry, IMetadataRenderer } from './contracts';
+import { IDeedNFT } from './contracts/IDeedNFT';
+import { IFundManager } from './contracts/IFundManager';
+import { IValidator } from './contracts/IValidator';
+import { IValidatorRegistry } from './contracts/IValidatorRegistry';
+import { IMetadataRenderer } from './contracts/IMetadataRenderer';
 import { TransactionQueue } from './utils/transactionQueue';
 import { NetworkMonitor } from './utils/networkMonitor';
 import { ValidationSystem } from './utils/validation';
 import { MonitoringSystem } from './utils/monitoring';
 import { RateLimiter } from './utils/rateLimiter';
+import { TransactionManager, TransactionResult } from './utils/transactionManager';
 
 export interface SDKConfig {
   network: NetworkConfig;
@@ -76,35 +81,35 @@ export class ProtocolSDK {
   async initialize(): Promise<void> {
     const addresses = getContractAddresses(this.chainId);
     
-    // Initialize contract instances
+    // Initialize contract instances with signer
     this.contracts.deedNFT = new ethers.Contract(
       addresses.DeedNFT,
-      [...IDeedNFT.abi],
-      this.provider
+      IDeedNFT.abi,
+      this.signer
     );
 
     this.contracts.fundManager = new ethers.Contract(
       addresses.FundManager,
-      [...IFundManager.abi],
-      this.provider
+      IFundManager.abi,
+      this.signer
     );
 
     this.contracts.validator = new ethers.Contract(
       addresses.Validator,
-      [...IValidator.abi],
-      this.provider
+      IValidator.abi,
+      this.signer
     );
 
     this.contracts.validatorRegistry = new ethers.Contract(
       addresses.ValidatorRegistry,
-      [...IValidatorRegistry.abi],
-      this.provider
+      IValidatorRegistry.abi,
+      this.signer
     );
 
     this.contracts.metadataRenderer = new ethers.Contract(
       addresses.MetadataRenderer,
-      [...IMetadataRenderer.abi],
-      this.provider
+      IMetadataRenderer.abi,
+      this.signer
     );
   }
 
@@ -277,4 +282,16 @@ export class ProtocolSDK {
   }
 }
 
-export { deedNFT, fundManager, validator, validatorRegistry, metadataRenderer }; 
+// Export the SDK as the default export
+export default ProtocolSDK;
+
+// Also export individual modules for direct access
+export {
+  deedNFT,
+  fundManager,
+  validator,
+  validatorRegistry,
+  metadataRenderer,
+  TransactionManager,
+  TransactionResult
+}; 

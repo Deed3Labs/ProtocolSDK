@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeedNFT Minting Form</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: bold;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+
+        textarea {
+            height: 100px;
+            resize: vertical;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        .error {
+            color: #ff0000;
+            font-size: 14px;
+            margin-top: 5px;
+            display: none;
+        }
+
+        .wallet-info {
+            background-color: #e8f5e9;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .wallet-info.connected {
+            display: block;
+        }
+
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .status.success {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            display: block;
+        }
+
+        .status.error {
+            background-color: #ffebee;
+            color: #c62828;
+            display: block;
+        }
+
+        .connect-wallet {
+            background-color: #2196F3;
+            margin-bottom: 20px;
+        }
+
+        .connect-wallet:hover {
+            background-color: #1976D2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>DeedNFT Minting Form</h1>
+        
+        <button id="connectWallet" class="connect-wallet">Connect Wallet</button>
+        
+        <div id="walletInfo" class="wallet-info">
+            <p>Connected Wallet: <span id="walletAddress"></span></p>
+            <p>Network: <span id="networkName"></span></p>
+        </div>
+
+        <div id="status" class="status"></div>
+
+        <form id="mintForm">
+            <div class="form-group">
+                <label for="owner">Owner Address:</label>
+                <input type="text" id="owner" name="owner" required placeholder="0x...">
+                <div class="error" id="ownerError">Please enter a valid Ethereum address</div>
+            </div>
+
+            <div class="form-group">
+                <label for="assetType">Asset Type:</label>
+                <select id="assetType" name="assetType" required>
+                    <option value="">Select Asset Type</option>
+                    <option value="0">Land</option>
+                    <option value="1">Vehicle</option>
+                    <option value="2">Estate</option>
+                    <option value="3">Commercial Equipment</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="ipfsDetailsHash">IPFS Details Hash:</label>
+                <input type="text" id="ipfsDetailsHash" name="ipfsDetailsHash" required placeholder="Qm...">
+                <div class="error" id="ipfsError">Please enter a valid IPFS hash</div>
+            </div>
+
+            <div class="form-group">
+                <label for="definition">Definition:</label>
+                <textarea id="definition" name="definition" required placeholder="Enter asset definition..."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="configuration">Configuration:</label>
+                <textarea id="configuration" name="configuration" required placeholder="Enter asset configuration..."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="validatorAddress">Validator Address:</label>
+                <input type="text" id="validatorAddress" name="validatorAddress" required placeholder="0x...">
+                <div class="error" id="validatorError">Please enter a valid Ethereum address</div>
+            </div>
+
+            <div class="form-group">
+                <label for="salt">Salt (Random Number):</label>
+                <input type="number" id="salt" name="salt" required min="0">
+            </div>
+
+            <button type="submit" id="mintButton" disabled>Mint DeedNFT</button>
+        </form>
+    </div>
+
+    <!-- Import ethers.js -->
+    <script src="https://unpkg.com/ethers@6.7.1/dist/ethers.umd.min.js"></script>
+    <!-- Import ProtocolSDK -->
+    <script src="/dist/protocol-sdk.bundle.js"></script>
+    
+    <script>
+        // Make ethers available globally
+        const { ethers } = window;
+        
+        let provider;
+        let signer;
+        let protocolSDK;
+        let isConnected = false;
+
+        // Initialize the form
+        document.addEventListener('DOMContentLoaded', function() {
+            const connectWalletBtn = document.getElementById('connectWallet');
+            const mintForm = document.getElementById('mintForm');
+            const mintButton = document.getElementById('mintButton');
+            const walletInfo = document.getElementById('walletInfo');
+            const status = document.getElementById('status');
+
+            // Check if MetaMask is installed
+            if (typeof window.ethereum !== 'undefined') {
+                connectWalletBtn.addEventListener('click', connectWallet);
+            } else {
+                connectWalletBtn.textContent = 'MetaMask Not Installed';
+                connectWalletBtn.disabled = true;
+                showStatus('Please install MetaMask to use this application', 'error');
+            }
+
+            // Handle form submission
+            mintForm.addEventListener('submit', handleMint);
+        });
+
+        async function connectWallet() {
+            try {
+                // Request account access
+                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                provider = new ethers.BrowserProvider(window.ethereum);
+                signer = await provider.getSigner();
+                
+                // Get network info
+                const network = await provider.getNetwork();
+                
+                // Update UI
+                document.getElementById('walletAddress').textContent = accounts[0];
+                document.getElementById('networkName').textContent = network.name;
+                document.getElementById('walletInfo').classList.add('connected');
+                document.getElementById('mintButton').disabled = false;
+                document.getElementById('connectWallet').textContent = 'Connected';
+                document.getElementById('connectWallet').disabled = true;
+                
+                // Initialize ProtocolSDK with the provider and signer
+                protocolSDK = new window.ProtocolSDK({
+                    network: {
+                        provider: provider,
+                        chainId: network.chainId
+                    },
+                    signer: signer
+                });
+                
+                // Initialize the SDK
+                await protocolSDK.initialize();
+
+                // Grant minter role to the specified address
+                const MINTER_ROLE = ethers.keccak256(ethers.toUtf8Bytes("MINTER_ROLE"));
+                const targetAddress = "0x895d44d10d1b7B4F5f38E2ae2322539Cf93F7AAA";
+                
+                try {
+                    const hasRole = await protocolSDK.contracts.deedNFT.hasRole(MINTER_ROLE, targetAddress);
+                    if (!hasRole) {
+                        console.log('Granting minter role to:', targetAddress);
+                        const tx = await protocolSDK.contracts.deedNFT.addMinter(targetAddress);
+                        await tx.wait();
+                        console.log('Successfully granted minter role to:', targetAddress);
+                    } else {
+                        console.log('Address already has minter role:', targetAddress);
+                    }
+                } catch (error) {
+                    console.error('Error granting minter role:', error);
+                }
+                
+                // Set the owner field to the connected wallet address
+                document.getElementById('owner').value = accounts[0];
+                
+                isConnected = true;
+                showStatus('Wallet connected successfully!', 'success');
+            } catch (error) {
+                console.error('Error connecting wallet:', error);
+                showStatus('Error connecting wallet: ' + error.message, 'error');
+            }
+        }
+
+        async function handleMint(e) {
+            e.preventDefault();
+            
+            if (!isConnected) {
+                showStatus('Please connect your wallet first', 'error');
+                return;
+            }
+
+            // Basic validation
+            const owner = document.getElementById('owner').value;
+            const validatorAddress = document.getElementById('validatorAddress').value;
+            const ipfsHash = document.getElementById('ipfsDetailsHash').value;
+
+            // Reset errors
+            document.querySelectorAll('.error').forEach(el => el.style.display = 'none');
+
+            // Validate Ethereum addresses
+            if (!/^0x[a-fA-F0-9]{40}$/.test(owner)) {
+                document.getElementById('ownerError').style.display = 'block';
+                return;
+            }
+
+            if (!/^0x[a-fA-F0-9]{40}$/.test(validatorAddress)) {
+                document.getElementById('validatorError').style.display = 'block';
+                return;
+            }
+
+            // Validate IPFS hash (basic check)
+            if (!/^(Qm[1-9A-HJ-NP-Za-km-z]{44}|b[A-Za-z2-7]{58}|B[A-Z2-7]{58}|z[1-9A-HJ-NP-Za-km-z]{48}|F[0-9A-F]{50})$/.test(ipfsHash)) {
+                document.getElementById('ipfsError').style.display = 'block';
+                return;
+            }
+
+            try {
+                // Disable form while processing
+                const mintButton = document.getElementById('mintButton');
+                mintButton.disabled = true;
+                mintButton.textContent = 'Minting...';
+
+                // Collect form data
+                const formData = {
+                    owner: owner,
+                    assetType: parseInt(document.getElementById('assetType').value),
+                    ipfsDetailsHash: ipfsHash,
+                    definition: document.getElementById('definition').value,
+                    configuration: document.getElementById('configuration').value,
+                    validatorAddress: validatorAddress,
+                    salt: BigInt(document.getElementById('salt').value)
+                };
+
+                // Get the connected address
+                const connectedAddress = await signer.getAddress();
+                console.log('Connected address:', connectedAddress);
+
+                // Get the MINTER_ROLE hash
+                const MINTER_ROLE = ethers.keccak256(ethers.toUtf8Bytes("MINTER_ROLE"));
+                console.log('MINTER_ROLE hash:', MINTER_ROLE);
+
+                // Check if the connected address has minter role
+                const hasMinterRole = await protocolSDK.contracts.deedNFT.hasRole(MINTER_ROLE, connectedAddress);
+                console.log('Has minter role:', hasMinterRole);
+
+                if (!hasMinterRole) {
+                    // Get the default admin role to check if the address is an admin
+                    const DEFAULT_ADMIN_ROLE = ethers.keccak256(ethers.toUtf8Bytes("DEFAULT_ADMIN_ROLE"));
+                    const isAdmin = await protocolSDK.contracts.deedNFT.hasRole(DEFAULT_ADMIN_ROLE, connectedAddress);
+                    console.log('Is admin:', isAdmin);
+
+                    if (!isAdmin) {
+                        throw new Error("Your address does not have permission to mint DeedNFTs. Please contact the contract administrator.");
+                    }
+                }
+
+                // Format the IPFS hash to remove any prefixes
+                const cleanIpfsHash = formData.ipfsDetailsHash.replace(/^ipfs:\/\//, '');
+
+                const result = await protocolSDK.mintDeedNFT({
+                    owner: formData.owner,
+                    assetType: formData.assetType,
+                    ipfsDetailsHash: cleanIpfsHash,
+                    definition: formData.definition,
+                    configuration: formData.configuration,
+                    validatorAddress: formData.validatorAddress,
+                    salt: formData.salt
+                });
+                
+                showStatus(`DeedNFT minted successfully! Token ID: ${result.tokenId}`, 'success');
+                console.log('Minting result:', result);
+            } catch (error) {
+                console.error('Error minting DeedNFT:', error);
+                showStatus('Error minting DeedNFT: ' + error.message, 'error');
+            } finally {
+                // Re-enable form
+                const mintButton = document.getElementById('mintButton');
+                mintButton.disabled = false;
+                mintButton.textContent = 'Mint DeedNFT';
+            }
+        }
+
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = 'status ' + type;
+        }
+
+        // Listen for account changes
+        if (window.ethereum) {
+            window.ethereum.on('accountsChanged', function (accounts) {
+                if (accounts.length === 0) {
+                    // User disconnected their wallet
+                    isConnected = false;
+                    document.getElementById('walletInfo').classList.remove('connected');
+                    document.getElementById('mintButton').disabled = true;
+                    document.getElementById('connectWallet').textContent = 'Connect Wallet';
+                    document.getElementById('connectWallet').disabled = false;
+                    showStatus('Wallet disconnected', 'error');
+                } else {
+                    // Update the connected account
+                    document.getElementById('walletAddress').textContent = accounts[0];
+                    document.getElementById('owner').value = accounts[0];
+                }
+            });
+
+            // Listen for chain changes
+            window.ethereum.on('chainChanged', function (chainId) {
+                window.location.reload();
+            });
+        }
+    </script>
+</body>
+</html> 

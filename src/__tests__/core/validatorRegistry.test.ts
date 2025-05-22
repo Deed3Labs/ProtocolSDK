@@ -16,7 +16,7 @@ import { ethers } from 'ethers';
 import { expect, beforeAll, beforeEach } from '@jest/globals';
 import { provider, wallet, TEST_CONFIG, executeContractTransaction } from '../setup';
 import { getValidatorInfo, getValidatorOwner, getValidatorsForAssetType, isValidatorActive, isValidatorRegistered, getValidatorName } from '../../api/validatorRegistry';
-import { IValidatorRegistry } from '../../contracts/IValidatorRegistry';
+import { IValidatorRegistryContract } from '../../contracts/IValidatorRegistry';
 import { AssetType } from '../../types/contracts';
 
 /**
@@ -104,9 +104,13 @@ describe('ValidatorRegistry API', () => {
     jest.spyOn(validatorRegistry, 'getValidatorInfo').mockImplementation(async (...args: any[]) => {
       const [validator] = args;
       const state = validatorStates.get(validator) || { name: '', active: false };
+      const validatorAddress = await validator1.getAddress();
+      const supportedAssetTypes = validator === validatorAddress ? [AssetType.Land] : [];
       return {
         name: state.name,
-        active: state.active
+        isActive: state.active,
+        active: state.active,
+        supportedAssetTypes
       };
     });
 
@@ -265,8 +269,9 @@ describe('ValidatorRegistry API', () => {
     it('should get validator info', async () => {
       const validatorAddress = await validator1.getAddress();
       const info = await getValidatorInfo(validatorRegistry, validatorAddress);
+      expect(info.isActive).toBe(true);
       expect(info.name).toBe('Test Validator 1');
-      expect(info.active).toBe(true);
+      expect(info.supportedAssetTypes).toEqual([AssetType.Land]);
     });
 
     /**
@@ -274,7 +279,7 @@ describe('ValidatorRegistry API', () => {
      */
     it('should get validator owner', async () => {
       const validatorAddress = await validator1.getAddress();
-      const owner = await getValidatorOwner(validatorRegistry, validatorAddress);
+      const owner = await getValidatorOwner(validatorRegistry as IValidatorRegistryContract, validatorAddress);
       expect(owner).toBe(await wallet.getAddress());
     });
 

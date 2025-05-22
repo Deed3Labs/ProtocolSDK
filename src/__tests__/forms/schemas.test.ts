@@ -5,7 +5,7 @@
  * @group FormSchemas
  * @group Unit
  */
-import { DeedNFTFormSchema, ValidatorFormSchema, FundManagerFormSchema } from '../../forms/schemas';
+import { DeedNFTFormSchema, ValidatorFormSchema, FundManagerFormSchema, MetadataRendererFormSchema } from '../../forms/schemas';
 
 /**
  * Unit tests for the predefined form schemas.
@@ -132,6 +132,94 @@ describe('Form Schemas', () => {
       for (const field of FundManagerFormSchema.fields) {
         expect(field.helpText).toBeDefined();
       }
+    });
+  });
+
+  /**
+   * Tests for MetadataRenderer form schema
+   * Verifies field structure, types, validation rules, and nested fields
+   */
+  describe('MetadataRendererFormSchema', () => {
+    it('should have all required fields', () => {
+      expect(MetadataRendererFormSchema.fields.map(f => f.name)).toEqual([
+        'tokenId',
+        'customMetadata',
+        'features',
+        'assetCondition',
+        'legalInfo',
+        'gallery',
+        'animationURL',
+        'externalLink'
+      ]);
+    });
+
+    it('should have correct field types', () => {
+      const tokenIdField = MetadataRendererFormSchema.fields.find(f => f.name === 'tokenId');
+      expect(tokenIdField?.type).toBe('number');
+      const customMetadataField = MetadataRendererFormSchema.fields.find(f => f.name === 'customMetadata');
+      expect(customMetadataField?.type).toBe('textarea');
+      const featuresField = MetadataRendererFormSchema.fields.find(f => f.name === 'features');
+      expect(featuresField?.type).toBe('array');
+      const assetConditionField = MetadataRendererFormSchema.fields.find(f => f.name === 'assetCondition');
+      expect(assetConditionField?.type).toBe('object');
+      const legalInfoField = MetadataRendererFormSchema.fields.find(f => f.name === 'legalInfo');
+      expect(legalInfoField?.type).toBe('object');
+      const galleryField = MetadataRendererFormSchema.fields.find(f => f.name === 'gallery');
+      expect(galleryField?.type).toBe('array');
+      const animationURLField = MetadataRendererFormSchema.fields.find(f => f.name === 'animationURL');
+      expect(animationURLField?.type).toBe('text');
+      const externalLinkField = MetadataRendererFormSchema.fields.find(f => f.name === 'externalLink');
+      expect(externalLinkField?.type).toBe('text');
+    });
+
+    it('should validate customMetadata as JSON', () => {
+      const customMetadataField = MetadataRendererFormSchema.fields.find(f => f.name === 'customMetadata');
+      expect(customMetadataField?.validation?.custom && customMetadataField.validation.custom('{"foo":1}')).toBe(true);
+      expect(customMetadataField?.validation?.custom && customMetadataField.validation.custom('not-json')).toBe(false);
+    });
+
+    it('should validate features as array of strings', () => {
+      const featuresField = MetadataRendererFormSchema.fields.find(f => f.name === 'features');
+      expect(featuresField?.validation?.custom && featuresField.validation.custom(['a', 'b'])).toBe(true);
+      expect(featuresField?.validation?.custom && featuresField.validation.custom([1, 2])).toBe(false);
+    });
+
+    it('should validate gallery as array of URLs', () => {
+      const galleryField = MetadataRendererFormSchema.fields.find(f => f.name === 'gallery');
+      expect(galleryField?.validation?.custom && galleryField.validation.custom(['http://a.com', 'https://b.com'])).toBe(true);
+      expect(galleryField?.validation?.custom && galleryField.validation.custom(['not-a-url'])).toBe(false);
+    });
+
+    it('should validate animationURL as video/gif file', () => {
+      const animationURLField = MetadataRendererFormSchema.fields.find(f => f.name === 'animationURL');
+      expect(animationURLField?.validation?.custom && animationURLField.validation.custom('https://a.com/vid.mp4')).toBe(true);
+      expect(animationURLField?.validation?.custom && animationURLField.validation.custom('https://a.com/file.txt')).toBe(false);
+    });
+
+    it('should validate externalLink as URL', () => {
+      const externalLinkField = MetadataRendererFormSchema.fields.find(f => f.name === 'externalLink');
+      expect(externalLinkField?.validation?.custom && externalLinkField.validation.custom('https://a.com')).toBe(true);
+      expect(externalLinkField?.validation?.custom && externalLinkField.validation.custom('not-a-url')).toBe(false);
+    });
+
+    it('should have nested fields for assetCondition and legalInfo', () => {
+      const assetConditionField = MetadataRendererFormSchema.fields.find(f => f.name === 'assetCondition');
+      expect(assetConditionField?.fields?.map(f => f.name)).toEqual([
+        'generalCondition',
+        'lastInspectionDate',
+        'knownIssues',
+        'improvements',
+        'additionalNotes'
+      ]);
+      const legalInfoField = MetadataRendererFormSchema.fields.find(f => f.name === 'legalInfo');
+      expect(legalInfoField?.fields?.map(f => f.name)).toEqual([
+        'jurisdiction',
+        'registrationNumber',
+        'registrationDate',
+        'documents',
+        'restrictions',
+        'additionalInfo'
+      ]);
     });
   });
 }); 

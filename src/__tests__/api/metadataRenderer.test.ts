@@ -10,6 +10,7 @@
 
 import { expect, jest } from '@jest/globals';
 import { ethers } from 'ethers';
+import { IMetadataRendererContract } from '../../contracts';
 import {
   tokenURI,
   setTokenCustomMetadata,
@@ -33,15 +34,18 @@ import {
   setDeedNFT,
   setAssetTypeImageURI,
   setAssetTypeBackgroundColor,
-  setInvalidatedImageURI
+  setInvalidatedImageURI,
+  contractURI
 } from '../../api/metadataRenderer';
 import { TEST_CONFIG, provider } from '../setup';
+import { TransactionManager } from '../../utils/transactionManager';
 
 /**
  * @description Test suite for the MetadataRenderer contract API
  */
 describe('MetadataRenderer API', () => {
-  let contract: ethers.Contract;
+  let contract: IMetadataRendererContract;
+  let transactionManager: TransactionManager;
   const validTokenId = 1;
   const validMetadata = 'ipfs://QmWWQSuPMS6aXCbZKpEjPHPUZN2NjB3YrhJTHsV4X3vb2t';
   const validFeatures = ['feature1', 'feature2'];
@@ -58,6 +62,9 @@ describe('MetadataRenderer API', () => {
   beforeEach(() => {
     // Reset mocks
     jest.clearAllMocks();
+
+    // Initialize transaction manager
+    transactionManager = new TransactionManager(provider);
 
     // Create mock transaction response
     const mockTxResponse = {
@@ -86,6 +93,7 @@ describe('MetadataRenderer API', () => {
       getTokenGallery: jest.fn<() => Promise<string[]>>().mockResolvedValue(validImageUrls),
       getTokenAnimationURL: jest.fn<() => Promise<string>>().mockResolvedValue('https://example.com/animation.mp4'),
       getTokenExternalLink: jest.fn<() => Promise<string>>().mockResolvedValue(validExternalLink),
+      contractURI: jest.fn<() => Promise<string>>().mockResolvedValue('ipfs://QmContractURI'),
 
       // Write functions
       syncTraitUpdate: jest.fn<() => Promise<ethers.TransactionResponse>>().mockResolvedValue(mockTxResponse),
@@ -105,7 +113,7 @@ describe('MetadataRenderer API', () => {
       interface: {
         format: () => ({})
       }
-    } as unknown as ethers.Contract;
+    } as unknown as IMetadataRendererContract;
   });
 
   /**
@@ -119,6 +127,17 @@ describe('MetadataRenderer API', () => {
       const result = await tokenURI(contract, validTokenId);
       expect(result).toBe(validMetadata);
       expect(contract.tokenURI).toHaveBeenCalledWith(validTokenId);
+    });
+
+    /**
+     * @description Tests successful retrieval of contract URI
+     */
+    it('should get contract URI successfully', async () => {
+      const contractUri = 'ipfs://QmContractURI';
+      jest.spyOn(contract, 'contractURI').mockResolvedValueOnce(contractUri);
+      const result = await contractURI(contract);
+      expect(result).toBe(contractUri);
+      expect(contract.contractURI).toHaveBeenCalled();
     });
 
     /**
@@ -273,6 +292,22 @@ describe('MetadataRenderer API', () => {
       expect(result).toEqual([{ type: 'type1', url: 'url1' }]);
       expect(contract.getTokenDocuments).toHaveBeenCalledWith(validTokenId);
     });
+
+    /**
+     * @description Tests successful adding of a token document
+     */
+    it('should add token document successfully', async () => {
+      await manageTokenDocument(contract, validTokenId, 'type1', 'document1', false);
+      expect(contract.manageTokenDocument).toHaveBeenCalledWith(validTokenId, 'type1', 'document1', false);
+    });
+
+    /**
+     * @description Tests successful removal of a token document
+     */
+    it('should remove token document successfully', async () => {
+      await manageTokenDocument(contract, validTokenId, 'type1', 'document1', true);
+      expect(contract.manageTokenDocument).toHaveBeenCalledWith(validTokenId, 'type1', 'document1', true);
+    });
   });
 
   /**
@@ -382,6 +417,63 @@ describe('MetadataRenderer API', () => {
         ['improvement1'],
         'Notes'
       )).rejects.toThrow('Failed to set asset condition');
+    });
+  });
+
+  /**
+   * @description Test suite for additional MetadataRenderer API coverage
+   */
+  describe('Additional MetadataRenderer API Coverage', () => {
+    let contract: any;
+    let txResponse: { wait: jest.Mock };
+    beforeEach(() => {
+      txResponse = {
+        wait: jest.fn<() => Promise<{ status: number }>>().mockResolvedValue({ status: 1 })
+      };
+      contract = {
+        setDeedNFT: jest.fn<() => Promise<{ wait: jest.Mock }>>().mockResolvedValue(txResponse),
+        setAssetTypeImageURI: jest.fn<() => Promise<{ wait: jest.Mock }>>().mockResolvedValue(txResponse),
+        setAssetTypeBackgroundColor: jest.fn<() => Promise<{ wait: jest.Mock }>>().mockResolvedValue(txResponse),
+        setInvalidatedImageURI: jest.fn<() => Promise<{ wait: jest.Mock }>>().mockResolvedValue(txResponse),
+        setTokenAnimationURL: jest.fn<() => Promise<{ wait: jest.Mock }>>().mockResolvedValue(txResponse),
+        setTokenExternalLink: jest.fn<() => Promise<{ wait: jest.Mock }>>().mockResolvedValue(txResponse)
+      } as any;
+    });
+
+    it('should set DeedNFT', async () => {
+      await setDeedNFT(contract, '0xabc');
+      expect(contract.setDeedNFT).toHaveBeenCalledWith('0xabc');
+      expect(txResponse.wait).toHaveBeenCalled();
+    });
+
+    it('should set asset type image URI', async () => {
+      await setAssetTypeImageURI(contract, 1, 'imageURI');
+      expect(contract.setAssetTypeImageURI).toHaveBeenCalledWith(1, 'imageURI');
+      expect(txResponse.wait).toHaveBeenCalled();
+    });
+
+    it('should set asset type background color', async () => {
+      await setAssetTypeBackgroundColor(contract, 1, '#fff');
+      expect(contract.setAssetTypeBackgroundColor).toHaveBeenCalledWith(1, '#fff');
+      expect(txResponse.wait).toHaveBeenCalled();
+    });
+
+    it('should set invalidated image URI', async () => {
+      await setInvalidatedImageURI(contract, 'imageURI');
+      expect(contract.setInvalidatedImageURI).toHaveBeenCalledWith('imageURI');
+      expect(txResponse.wait).toHaveBeenCalled();
+    });
+
+    it('should set token animation URL', async () => {
+      await setTokenAnimationURL(contract, 1, 'animURL');
+      expect(contract.setTokenAnimationURL).toHaveBeenCalledWith(1, 'animURL');
+      expect(txResponse.wait).toHaveBeenCalled();
+    });
+
+    it('should set token external link', async () => {
+      await setTokenExternalLink(contract, 1, 'extLink');
+      expect(contract.setTokenExternalLink).toHaveBeenCalledWith(1, 'extLink');
+      expect(txResponse.wait).toHaveBeenCalled();
     });
   });
 }); 

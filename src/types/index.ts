@@ -49,4 +49,29 @@ export interface ValidatorInfo {
   isActive: boolean;
   assetTypes: number[];
   commissionPercentage: number;
+}
+
+export interface AssetTypeImageURI {
+  assetType: number;
+  imageURI: string;
+}
+
+export interface AssetTypeBackgroundColor {
+  assetType: number;
+  backgroundColor: string;
+}
+
+export interface TokenGallery {
+  tokenId: number;
+  imageUrls: string[];
+}
+
+export interface TokenAnimation {
+  tokenId: number;
+  animationURL: string;
+}
+
+export interface TokenExternalLink {
+  tokenId: number;
+  externalLink: string;
 } 

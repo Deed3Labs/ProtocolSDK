@@ -34,6 +34,8 @@ describe('FundManager API', () => {
   let fundManager: ethers.Contract;
   let user1: ethers.Wallet;
   let validator: ethers.Wallet;
+  let commissionBalances: Map<string, Map<string, bigint>>;
+  let nextTokenId: number;
 
   /**
    * @description Sets up the test environment before all tests
@@ -69,12 +71,8 @@ describe('FundManager API', () => {
     );
 
     // Track state
-    const commissionBalances = new Map<string, Map<string, bigint>>();
-    const commissionPercentage = 500n; // 5%
-    const feeReceiver = await user1.getAddress();
-    const validatorRegistry = await validator.getAddress();
-    const deedNFT = await user1.getAddress();
-    let nextTokenId = 1;
+    commissionBalances = new Map<string, Map<string, bigint>>();
+    nextTokenId = 1;
 
     /**
      * @description Mocks the mintDeedNFT function to simulate minting a new DeedNFT
@@ -128,6 +126,7 @@ describe('FundManager API', () => {
       const [validator, token] = args;
       const validatorBalances = commissionBalances.get(validator) || new Map<string, bigint>();
       validatorBalances.set(token, BigInt(0));
+      commissionBalances.set(validator, validatorBalances);
       const mockTxResponse = {
         hash: '0xabc',
         wait: async () => ({
@@ -218,6 +217,12 @@ describe('FundManager API', () => {
     });
   });
 
+  beforeEach(() => {
+    // Reset state before each test
+    commissionBalances.clear();
+    nextTokenId = 1;
+  });
+
   /**
    * @description Test suite for DeedNFT management operations
    */
@@ -242,6 +247,17 @@ describe('FundManager API', () => {
       );
       const tokenId = '1';
       expect(tokenId).toBeDefined();
+      expect(fundManager.mintDeedNFT).toHaveBeenCalledWith(
+        await user1.getAddress(),
+        AssetType.Land,
+        'ipfs://metadata1',
+        'Definition',
+        'Configuration',
+        await validator.getAddress(),
+        ethers.ZeroAddress,
+        1,
+        expect.any(Object)
+      );
     });
 
     /**
@@ -277,6 +293,7 @@ describe('FundManager API', () => {
         [deeds]
       );
       expect(tx).toBeDefined();
+      expect(fundManager.mintBatchDeedNFT).toHaveBeenCalledWith(deeds, expect.any(Object));
     });
   });
 
@@ -292,6 +309,11 @@ describe('FundManager API', () => {
       const validatorAddress = await validator.getAddress();
       const token = ethers.ZeroAddress;
 
+      // Set initial balance
+      const validatorBalances = new Map<string, bigint>();
+      validatorBalances.set(token, BigInt(1000));
+      commissionBalances.set(validatorAddress, validatorBalances);
+
       // Set commission percentage
       const percentage = 500; // 5%
       await executeContractTransaction(
@@ -299,10 +321,11 @@ describe('FundManager API', () => {
         'setCommissionPercentage',
         [percentage]
       );
+      expect(fundManager.setCommissionPercentage).toHaveBeenCalledWith(percentage, expect.any(Object));
 
       // Check commission balance
       const balance = await getCommissionBalance(fundManager, validatorAddress, token);
-      expect(balance).toBe(BigInt(0));
+      expect(balance).toBe(BigInt(1000));
 
       // Withdraw fees
       await executeContractTransaction(
@@ -310,6 +333,11 @@ describe('FundManager API', () => {
         'withdrawValidatorFees',
         [validatorAddress, token]
       );
+      expect(fundManager.withdrawValidatorFees).toHaveBeenCalledWith(validatorAddress, token, expect.any(Object));
+
+      // Verify balance is zeroed out
+      const newBalance = await getCommissionBalance(fundManager, validatorAddress, token);
+      expect(newBalance).toBe(BigInt(0));
     });
 
     /**
@@ -322,6 +350,7 @@ describe('FundManager API', () => {
         'setFeeReceiver',
         [receiver]
       );
+      expect(fundManager.setFeeReceiver).toHaveBeenCalledWith(receiver, expect.any(Object));
     });
   });
 
@@ -333,6 +362,7 @@ describe('FundManager API', () => {
         'setValidatorRegistry',
         [registry]
       );
+      expect(fundManager.setValidatorRegistry).toHaveBeenCalledWith(registry, expect.any(Object));
     });
 
     it('should set deed NFT contract', async () => {
@@ -342,6 +372,7 @@ describe('FundManager API', () => {
         'setDeedNFT',
         [deedNFT]
       );
+      expect(fundManager.setDeedNFT).toHaveBeenCalledWith(deedNFT, expect.any(Object));
     });
   });
 }); 

@@ -14,15 +14,22 @@ import { IDeedNFT } from '../../contracts/IDeedNFT';
 import { IFundManager } from '../../contracts/IFundManager';
 import { IValidator } from '../../contracts/IValidator';
 import { IValidatorRegistry } from '../../contracts/IValidatorRegistry';
-import { IMetadataRenderer } from '../../contracts/IMetadataRenderer';
+import { IMetadataRendererContract } from '../../contracts/IMetadataRenderer';
 import { AssetType } from '../../types/contracts';
+import { 
+  tokenURI, 
+  setTokenCustomMetadata, 
+  setTokenFeatures, 
+  getTokenFeatures,
+  syncTraitUpdate 
+} from '../../api/metadataRenderer';
 
 describe('API Integration', () => {
   let deedNFT: ethers.Contract;
   let fundManager: ethers.Contract;
   let validator: ethers.Contract;
   let validatorRegistry: ethers.Contract;
-  let metadataRenderer: ethers.Contract;
+  let metadataRenderer: IMetadataRendererContract;
   let user1: ethers.Wallet;
   let validator1: ethers.Wallet;
 
@@ -55,7 +62,11 @@ describe('API Integration', () => {
     ];
 
     const metadataRendererAbi = [
-      'function tokenURI(uint256 tokenId) view returns (string)'
+      'function tokenURI(uint256 tokenId) view returns (string)',
+      'function syncTraitUpdate(uint256 tokenId, bytes32 traitKey, bytes traitValue)',
+      'function setTokenCustomMetadata(uint256 tokenId, string metadata)',
+      'function setTokenFeatures(uint256 tokenId, string[] features)',
+      'function getTokenFeatures(uint256 tokenId) view returns (string[])'
     ];
 
     deedNFT = new ethers.Contract(
@@ -83,10 +94,10 @@ describe('API Integration', () => {
     );
 
     metadataRenderer = new ethers.Contract(
-      TEST_CONFIG.contracts.metadataRenderer!,
+      '0x0000000000000000000000000000000000000003',
       metadataRendererAbi,
       wallet
-    );
+    ) as unknown as IMetadataRendererContract;
 
     // Track state
     const validatedDeeds = new Set<string>();
@@ -177,6 +188,51 @@ describe('API Integration', () => {
       };
       return mockTxResponse;
     });
+
+    // Mock metadata renderer methods
+    jest.spyOn(metadataRenderer, 'tokenURI').mockImplementation(async (...args: any[]) => {
+      const [tokenId] = args;
+      return tokenURIs.get(tokenId.toString()) || 'ipfs://default';
+    });
+
+    jest.spyOn(metadataRenderer, 'syncTraitUpdate').mockImplementation(async (...args: any[]) => {
+      const mockTxResponse = {
+        hash: '0xabc',
+        wait: async () => ({
+          status: 1,
+          transactionHash: '0xabc'
+        })
+      };
+      return mockTxResponse;
+    });
+
+    jest.spyOn(metadataRenderer, 'setTokenCustomMetadata').mockImplementation(async (...args: any[]) => {
+      const [tokenId, metadata] = args;
+      tokenURIs.set(tokenId.toString(), metadata);
+      const mockTxResponse = {
+        hash: '0xabc',
+        wait: async () => ({
+          status: 1,
+          transactionHash: '0xabc'
+        })
+      };
+      return mockTxResponse;
+    });
+
+    jest.spyOn(metadataRenderer, 'setTokenFeatures').mockImplementation(async (...args: any[]) => {
+      const mockTxResponse = {
+        hash: '0xabc',
+        wait: async () => ({
+          status: 1,
+          transactionHash: '0xabc'
+        })
+      };
+      return mockTxResponse;
+    });
+
+    jest.spyOn(metadataRenderer, 'getTokenFeatures').mockImplementation(async (...args: any[]) => {
+      return ['feature1', 'feature2'];
+    });
   });
 
   describe('Complete Deed Lifecycle', () => {
@@ -226,6 +282,31 @@ describe('API Integration', () => {
         ethers.ZeroAddress
       );
       expect(commissionBalance).toBe(BigInt(0));
+
+      // 6. Update metadata renderer
+      await executeContractTransaction(
+        metadataRenderer,
+        'setTokenCustomMetadata',
+        [Number(tokenId), 'ipfs://custom-metadata']
+      );
+
+      await executeContractTransaction(
+        metadataRenderer,
+        'setTokenFeatures',
+        [Number(tokenId), ['feature1', 'feature2']]
+      );
+
+      const features = await getTokenFeatures(metadataRenderer, Number(tokenId));
+      expect(features).toEqual(['feature1', 'feature2']);
+
+      await executeContractTransaction(
+        metadataRenderer,
+        'syncTraitUpdate',
+        [Number(tokenId), ethers.keccak256(ethers.toUtf8Bytes('color')), ethers.toUtf8Bytes('blue')]
+      );
+
+      const metadata = await tokenURI(metadataRenderer, Number(tokenId));
+      expect(metadata).toBe('ipfs://custom-metadata');
     });
   });
 }); 

@@ -1,6 +1,60 @@
 import { ethers } from 'ethers';
 import { AssetType } from '../types/contracts';
 
+export interface IFundManagerInterface extends ethers.Interface {
+  functions: {
+    mintDeedNFT(
+      owner: string,
+      assetType: AssetType,
+      ipfsDetailsHash: string,
+      definition: string,
+      configuration: string,
+      validatorContract: string,
+      token: string,
+      salt: ethers.BigNumberish
+    ): Promise<ethers.ContractTransaction>;
+    
+    mintBatchDeedNFT(deeds: Array<{
+      owner: string;
+      assetType: AssetType;
+      ipfsDetailsHash: string;
+      definition: string;
+      configuration: string;
+      validatorContract: string;
+      token: string;
+      salt: ethers.BigNumberish;
+    }>): Promise<ethers.ContractTransaction>;
+    
+    getCommissionBalance(validator: string, token: string): Promise<ethers.BigNumberish>;
+    
+    withdrawValidatorFees(validator: string, token: string): Promise<ethers.ContractTransaction>;
+    
+    setCommissionPercentage(percentage: ethers.BigNumberish): Promise<ethers.ContractTransaction>;
+    
+    setFeeReceiver(receiver: string): Promise<ethers.ContractTransaction>;
+    
+    setValidatorRegistry(registry: string): Promise<ethers.ContractTransaction>;
+    
+    setDeedNFT(deedNFT: string): Promise<ethers.ContractTransaction>;
+    
+    getCommissionPercentage(): Promise<ethers.BigNumberish>;
+    
+    commissionPercentage(): Promise<ethers.BigNumberish>;
+    
+    deedNFT(): Promise<string>;
+    
+    formatFee(amount: ethers.BigNumberish): Promise<string>;
+    
+    collectCommission(
+      tokenId: ethers.BigNumberish,
+      amount: ethers.BigNumberish,
+      token: string
+    ): Promise<ethers.ContractTransaction>;
+  };
+}
+
+export type IFundManagerContract = ethers.Contract & IFundManagerInterface;
+
 export const IFundManager = {
   abi: [
     {
@@ -84,11 +138,49 @@ export const IFundManager = {
       outputs: [],
       stateMutability: 'nonpayable',
       type: 'function'
+    },
+    {
+      inputs: [],
+      name: 'getCommissionPercentage',
+      outputs: [{ name: '', type: 'uint256' }],
+      stateMutability: 'view',
+      type: 'function'
+    },
+    {
+      inputs: [],
+      name: 'commissionPercentage',
+      outputs: [{ name: '', type: 'uint256' }],
+      stateMutability: 'view',
+      type: 'function'
+    },
+    {
+      inputs: [],
+      name: 'deedNFT',
+      outputs: [{ name: '', type: 'address' }],
+      stateMutability: 'view',
+      type: 'function'
+    },
+    {
+      inputs: [{ name: 'amount', type: 'uint256' }],
+      name: 'formatFee',
+      outputs: [{ name: '', type: 'string' }],
+      stateMutability: 'pure',
+      type: 'function'
+    },
+    {
+      inputs: [
+        { name: 'tokenId', type: 'uint256' },
+        { name: 'amount', type: 'uint256' },
+        { name: 'token', type: 'address' }
+      ],
+      name: 'collectCommission',
+      outputs: [],
+      stateMutability: 'nonpayable',
+      type: 'function'
     }
-  ],
-  bytecode: '',
-  linkReferences: {}
-} as const;
-
-export type IFundManagerInterface = typeof IFundManager.abi;
-export type IFundManagerContract = typeof IFundManager; 
+  ] as const,
+  bytecode: "0x",
+  deployedBytecode: "0x",
+  linkReferences: {},
+  deployedLinkReferences: {}
+}; 

@@ -1,92 +1,182 @@
 /**
  * @file FundManager API
  * @description This module provides functions to interact with the FundManager smart contract.
- * It handles operations related to DeedNFT minting, fee management, and contract configuration.
+ * It handles all operations related to commission management, fee collection, and deed minting.
  * 
  * @module FundManager
  */
 
 import { ethers } from 'ethers';
-import { IFundManager } from '../contracts/IFundManager';
+import { IFundManagerContract } from '../contracts';
+import { AssetType } from '../types/contracts';
+import { TransactionManager, TransactionResult } from '../utils/transactionManager';
+
+/**
+ * @function getCommissionPercentage
+ * @description Gets the commission percentage
+ * @param {ethers.Contract} contract - The FundManager contract instance
+ * @returns {Promise<number>} The commission percentage in basis points
+ */
+export async function getCommissionPercentage(contract: ethers.Contract): Promise<number> {
+  return await contract.getCommissionPercentage();
+}
+
+/**
+ * @function commissionPercentage
+ * @description Gets the commission percentage (alias for getCommissionPercentage)
+ * @param {ethers.Contract} contract - The FundManager contract instance
+ * @returns {Promise<number>} The commission percentage in basis points
+ */
+export async function commissionPercentage(contract: ethers.Contract): Promise<number> {
+  return await contract.commissionPercentage();
+}
+
+/**
+ * @function deedNFT
+ * @description Gets the DeedNFT contract address
+ * @param {ethers.Contract} contract - The FundManager contract instance
+ * @returns {Promise<string>} The DeedNFT contract address
+ */
+export async function deedNFT(contract: ethers.Contract): Promise<string> {
+  return await contract.deedNFT();
+}
+
+/**
+ * @function formatFee
+ * @description Formats a fee amount
+ * @param {ethers.Contract} contract - The FundManager contract instance
+ * @param {number} amount - The amount to format
+ * @returns {Promise<string>} The formatted fee as a string
+ */
+export async function formatFee(contract: ethers.Contract, amount: number): Promise<string> {
+  return await contract.formatFee(amount);
+}
+
+/**
+ * @function collectCommission
+ * @description Collects commission from a service fee
+ * @param {ethers.Contract} contract - The FundManager contract instance
+ * @param {number} tokenId - The ID of the token
+ * @param {number} amount - The amount of the service fee
+ * @param {string} token - The token address
+ * @returns {Promise<TransactionResult>}
+ */
+export async function collectCommission(
+  contract: ethers.Contract,
+  tokenId: number,
+  amount: number,
+  token: string
+): Promise<TransactionResult> {
+  const tx = await contract.collectCommission(tokenId, amount, token);
+  const manager = new TransactionManager(contract.runner?.provider!);
+  return await manager.sendTransaction(tx);
+}
 
 /**
  * @function mintDeedNFT
- * @description Mints a new DeedNFT through the FundManager contract
+ * @description Mints a new deed NFT
  * @param {ethers.Contract} contract - The FundManager contract instance
- * @param {string} owner - The address that will own the minted DeedNFT
- * @param {number} assetType - The type identifier for the asset
- * @param {string} ipfsDetailsHash - IPFS hash containing the DeedNFT's metadata
- * @param {string} definition - The DeedNFT's definition string
- * @param {string} configuration - The DeedNFT's configuration string
+ * @param {string} owner - Address of the owner
+ * @param {AssetType} assetType - Type of asset
+ * @param {string} ipfsDetailsHash - IPFS hash of details
+ * @param {string} definition - Definition of the deed
+ * @param {string} configuration - Configuration of the deed
  * @param {string} validatorContract - Address of the validator contract
- * @param {string} token - The token address
- * @param {number} salt - A unique number to ensure transaction uniqueness
- * @returns {Promise<number>} The ID of the minted DeedNFT
- * @throws {Error} If the minting transaction fails
+ * @param {string} token - Address of the token
+ * @param {number} salt - Optional value used to generate a unique token ID
+ * @returns {Promise<TransactionResult>}
  */
 export async function mintDeedNFT(
-  contract: ethers.Contract,
+  contract: IFundManagerContract,
   owner: string,
-  assetType: number,
+  assetType: AssetType,
   ipfsDetailsHash: string,
   definition: string,
   configuration: string,
   validatorContract: string,
   token: string,
-  salt: number
-): Promise<number> {
-  const tx = await contract.mintDeedNFT(owner, assetType, ipfsDetailsHash, definition, configuration, validatorContract, token, salt);
-  await tx.wait();
-  return tx.tokenId;
+  salt: ethers.BigNumberish
+): Promise<TransactionResult> {
+  const tx = await contract.mintDeedNFT(
+    owner,
+    assetType,
+    ipfsDetailsHash,
+    definition,
+    configuration,
+    validatorContract,
+    token,
+    salt
+  );
+  const manager = new TransactionManager(contract.runner?.provider!);
+  return await manager.sendTransaction(tx);
 }
 
 /**
  * @function mintBatchDeedNFT
- * @description Mints multiple DeedNFTs in a single transaction through the FundManager contract
+ * @description Mints multiple deed NFTs in a batch
  * @param {ethers.Contract} contract - The FundManager contract instance
  * @param {Array<{
- *   owner: string;
- *   assetType: number;
- *   ipfsDetailsHash: string;
- *   definition: string;
- *   configuration: string;
- *   validatorContract: string;
- *   token: string;
- *   salt: number;
- * }>} deeds - Array of DeedNFT parameters to mint
- * @returns {Promise<number[]>} Array of IDs for the minted DeedNFTs
- * @throws {Error} If the batch minting transaction fails
+ *   owner: string,
+ *   assetType: AssetType,
+ *   ipfsDetailsHash: string,
+ *   definition: string,
+ *   configuration: string,
+ *   validatorContract: string,
+ *   token: string,
+ *   salt: number
+ * }>} deeds - Array of deed minting data
+ * @returns {Promise<TransactionResult>}
  */
-export async function mintBatchDeedNFT(contract: ethers.Contract, deeds: any[]): Promise<number[]> {
+export async function mintBatchDeedNFT(
+  contract: ethers.Contract,
+  deeds: Array<{
+    owner: string;
+    assetType: AssetType;
+    ipfsDetailsHash: string;
+    definition: string;
+    configuration: string;
+    validatorContract: string;
+    token: string;
+    salt: number
+  }>
+): Promise<TransactionResult> {
   const tx = await contract.mintBatchDeedNFT(deeds);
-  await tx.wait();
-  return tx.tokenIds;
-}
-
-/**
- * @function withdrawValidatorFees
- * @description Withdraws accumulated fees for a validator contract
- * @param {ethers.Contract} contract - The FundManager contract instance
- * @param {string} validatorContract - Address of the validator contract
- * @param {string} token - The token address to withdraw fees in
- * @returns {Promise<void>}
- * @throws {Error} If the withdrawal transaction fails
- */
-export async function withdrawValidatorFees(contract: ethers.Contract, validatorContract: string, token: string): Promise<void> {
-  const tx = await contract.withdrawValidatorFees(validatorContract, token);
-  await tx.wait();
+  const manager = new TransactionManager(contract.runner?.provider!);
+  return await manager.sendTransaction(tx);
 }
 
 /**
  * @function getCommissionBalance
- * @description Gets the commission balance for a validator contract
+ * @description Gets the commission balance for a validator and token
  * @param {ethers.Contract} contract - The FundManager contract instance
- * @param {string} validatorContract - Address of the validator contract
- * @param {string} token - The token address to check balance in
+ * @param {string} validator - Address of the validator
+ * @param {string} token - Address of the token
  * @returns {Promise<number>} The commission balance
  */
-export async function getCommissionBalance(contract: ethers.Contract, validatorContract: string, token: string): Promise<number> {
-  return await contract.getCommissionBalance(validatorContract, token);
+export async function getCommissionBalance(
+  contract: ethers.Contract,
+  validator: string,
+  token: string
+): Promise<number> {
+  return await contract.getCommissionBalance(validator, token);
+}
+
+/**
+ * @function withdrawValidatorFees
+ * @description Allows validator admins to withdraw their accumulated fees
+ * @param {ethers.Contract} contract - The FundManager contract instance
+ * @param {string} validatorContract - Address of the validator contract
+ * @param {string} token - Address of the token to withdraw
+ * @returns {Promise<TransactionResult>}
+ */
+export async function withdrawValidatorFees(
+  contract: ethers.Contract,
+  validatorContract: string,
+  token: string
+): Promise<TransactionResult> {
+  const tx = await contract.withdrawValidatorFees(validatorContract, token);
+  const manager = new TransactionManager(contract.runner?.provider!);
+  return await manager.sendTransaction(tx);
 }
 
 /**
@@ -94,12 +184,16 @@ export async function getCommissionBalance(contract: ethers.Contract, validatorC
  * @description Sets the commission percentage for the FundManager
  * @param {ethers.Contract} contract - The FundManager contract instance
  * @param {number} percentage - The new commission percentage (0-100)
- * @returns {Promise<void>}
+ * @returns {Promise<TransactionResult>}
  * @throws {Error} If setting the commission percentage fails
  */
-export async function setCommissionPercentage(contract: ethers.Contract, percentage: number): Promise<void> {
+export async function setCommissionPercentage(
+  contract: ethers.Contract,
+  percentage: number
+): Promise<TransactionResult> {
   const tx = await contract.setCommissionPercentage(percentage);
-  await tx.wait();
+  const manager = new TransactionManager(contract.runner?.provider!);
+  return await manager.sendTransaction(tx);
 }
 
 /**
@@ -107,12 +201,16 @@ export async function setCommissionPercentage(contract: ethers.Contract, percent
  * @description Sets the address that will receive collected fees
  * @param {ethers.Contract} contract - The FundManager contract instance
  * @param {string} feeReceiver - The address to receive fees
- * @returns {Promise<void>}
+ * @returns {Promise<TransactionResult>}
  * @throws {Error} If setting the fee receiver fails
  */
-export async function setFeeReceiver(contract: ethers.Contract, feeReceiver: string): Promise<void> {
+export async function setFeeReceiver(
+  contract: ethers.Contract,
+  feeReceiver: string
+): Promise<TransactionResult> {
   const tx = await contract.setFeeReceiver(feeReceiver);
-  await tx.wait();
+  const manager = new TransactionManager(contract.runner?.provider!);
+  return await manager.sendTransaction(tx);
 }
 
 /**
@@ -120,12 +218,16 @@ export async function setFeeReceiver(contract: ethers.Contract, feeReceiver: str
  * @description Sets the validator registry contract address
  * @param {ethers.Contract} contract - The FundManager contract instance
  * @param {string} validatorRegistry - The address of the validator registry contract
- * @returns {Promise<void>}
+ * @returns {Promise<TransactionResult>}
  * @throws {Error} If setting the validator registry fails
  */
-export async function setValidatorRegistry(contract: ethers.Contract, validatorRegistry: string): Promise<void> {
+export async function setValidatorRegistry(
+  contract: ethers.Contract,
+  validatorRegistry: string
+): Promise<TransactionResult> {
   const tx = await contract.setValidatorRegistry(validatorRegistry);
-  await tx.wait();
+  const manager = new TransactionManager(contract.runner?.provider!);
+  return await manager.sendTransaction(tx);
 }
 
 /**
@@ -133,10 +235,14 @@ export async function setValidatorRegistry(contract: ethers.Contract, validatorR
  * @description Sets the DeedNFT contract address
  * @param {ethers.Contract} contract - The FundManager contract instance
  * @param {string} deedNFT - The address of the DeedNFT contract
- * @returns {Promise<void>}
+ * @returns {Promise<TransactionResult>}
  * @throws {Error} If setting the DeedNFT contract fails
  */
-export async function setDeedNFT(contract: ethers.Contract, deedNFT: string): Promise<void> {
+export async function setDeedNFT(
+  contract: ethers.Contract,
+  deedNFT: string
+): Promise<TransactionResult> {
   const tx = await contract.setDeedNFT(deedNFT);
-  await tx.wait();
+  const manager = new TransactionManager(contract.runner?.provider!);
+  return await manager.sendTransaction(tx);
 } 

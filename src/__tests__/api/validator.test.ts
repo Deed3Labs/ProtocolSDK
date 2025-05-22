@@ -9,6 +9,7 @@
 
 import { expect, jest } from '@jest/globals';
 import { ethers } from 'ethers';
+import { IValidatorContract } from '../../contracts';
 import {
   validateDeed,
   validateOperatingAgreement,
@@ -16,7 +17,7 @@ import {
   setValidationCriteria,
   registerOperatingAgreement,
   operatingAgreementName,
-  defaultOperatingAgreement,
+  getDefaultOperatingAgreement,
   addWhitelistedToken,
   removeWhitelistedToken,
   isTokenWhitelisted,
@@ -33,12 +34,16 @@ import {
   isCompatibleDeedNFT
 } from '../../api/validator';
 import { TEST_CONFIG, provider } from '../setup';
+import * as validatorApi from '../../api/validator';
+import { TransactionManager } from '../../utils/transactionManager';
 
 /**
  * @description Test suite for the Validator contract API
  */
 describe('Validator API', () => {
-  let contract: ethers.Contract;
+  let contract: IValidatorContract;
+  let transactionManager: TransactionManager;
+  const validTokenId = 1;
   const validAddress = '0x1234567890123456789012345678901234567890';
   const validIpfsHash = 'QmWWQSuPMS6aXCbZKpEjPHPUZN2NjB3YrhJTHsV4X3vb2t';
 
@@ -51,6 +56,9 @@ describe('Validator API', () => {
   beforeEach(() => {
     // Reset mocks
     jest.clearAllMocks();
+
+    // Initialize transaction manager
+    transactionManager = new TransactionManager(provider);
 
     // Create mock transaction response
     const mockTxResponse = {
@@ -72,12 +80,13 @@ describe('Validator API', () => {
       getValidationCriteria: jest.fn<() => Promise<[string[], string, boolean, boolean]>>()
         .mockResolvedValue([['trait1', 'trait2'], 'criteria', true, true]),
       operatingAgreementName: jest.fn<() => Promise<string>>().mockResolvedValue('Test Agreement'),
-      defaultOperatingAgreement: jest.fn<() => Promise<string>>().mockResolvedValue(validIpfsHash),
+      defaultOperatingAgreement: jest.fn<() => Promise<string>>().mockResolvedValue('default agreement'),
       isTokenWhitelisted: jest.fn<() => Promise<boolean>>().mockResolvedValue(true),
       getServiceFee: jest.fn<() => Promise<number>>().mockResolvedValue(100),
       getRoyaltyFeePercentage: jest.fn<() => Promise<number>>().mockResolvedValue(250), // 2.5%
       getRoyaltyReceiver: jest.fn<() => Promise<string>>().mockResolvedValue(validAddress),
       isCompatibleDeedNFT: jest.fn<() => Promise<boolean>>().mockResolvedValue(true),
+      isDeedValidated: jest.fn<() => Promise<boolean>>().mockResolvedValue(true),
 
       // Write functions
       setValidationCriteria: jest.fn<() => Promise<ethers.TransactionResponse>>().mockResolvedValue(mockTxResponse),
@@ -95,7 +104,7 @@ describe('Validator API', () => {
       interface: {
         format: () => ({})
       }
-    } as unknown as ethers.Contract;
+    } as unknown as IValidatorContract;
   });
 
   /**
@@ -175,9 +184,9 @@ describe('Validator API', () => {
     /**
      * @description Tests successful retrieval of default operating agreement
      */
-    it('should get default operating agreement successfully', async () => {
-      const result = await defaultOperatingAgreement(contract);
-      expect(result).toBe(validIpfsHash);
+    it('should get default operating agreement', async () => {
+      const result = await getDefaultOperatingAgreement(contract);
+      expect(result).toBe('default agreement');
       expect(contract.defaultOperatingAgreement).toHaveBeenCalled();
     });
   });
@@ -345,5 +354,203 @@ describe('Validator API', () => {
         true
       )).rejects.toThrow('Transaction failed');
     });
+  });
+});
+
+describe('Additional Validator API Coverage', () => {
+  let contract: any;
+  let txResponse: { wait: jest.Mock };
+  beforeEach(() => {
+    txResponse = {
+      wait: jest.fn<() => Promise<{ status: number }>>().mockResolvedValue({ status: 1 })
+    };
+    contract = {
+      getBaseUri: jest.fn<() => Promise<string>>().mockResolvedValue('baseURI'),
+      setBaseUri: jest.fn<() => Promise<{ wait: jest.Mock }>>().mockResolvedValue(txResponse),
+      defaultOperatingAgreement: jest.fn<() => Promise<string>>().mockResolvedValue('defaultOA'),
+      setDefaultOperatingAgreement: jest.fn<() => Promise<{ wait: jest.Mock }>>().mockResolvedValue(txResponse),
+      setOperatingAgreementName: jest.fn<() => Promise<{ wait: jest.Mock }>>().mockResolvedValue(txResponse),
+      removeOperatingAgreementName: jest.fn<() => Promise<{ wait: jest.Mock }>>().mockResolvedValue(txResponse),
+      setDeedNFT: jest.fn<() => Promise<{ wait: jest.Mock }>>().mockResolvedValue(txResponse),
+      addCompatibleDeedNFT: jest.fn<() => Promise<{ wait: jest.Mock }>>().mockResolvedValue(txResponse),
+      removeCompatibleDeedNFT: jest.fn<() => Promise<{ wait: jest.Mock }>>().mockResolvedValue(txResponse),
+      setPrimaryDeedNFT: jest.fn<() => Promise<{ wait: jest.Mock }>>().mockResolvedValue(txResponse),
+      setAssetTypeSupport: jest.fn<() => Promise<{ wait: jest.Mock }>>().mockResolvedValue(txResponse),
+      setValidationCriteria: jest.fn<() => Promise<{ wait: jest.Mock }>>().mockResolvedValue(txResponse),
+      setupValidationCriteria: jest.fn<() => Promise<{ wait: jest.Mock }>>().mockResolvedValue(txResponse),
+      operatingAgreementName: jest.fn<() => Promise<string>>().mockResolvedValue('OA Name'),
+      supportsAssetType: jest.fn<() => Promise<boolean>>().mockResolvedValue(true),
+      addWhitelistedToken: jest.fn<() => Promise<{ wait: jest.Mock }>>().mockResolvedValue(txResponse),
+      removeWhitelistedToken: jest.fn<() => Promise<{ wait: jest.Mock }>>().mockResolvedValue(txResponse),
+      setServiceFee: jest.fn<() => Promise<{ wait: jest.Mock }>>().mockResolvedValue(txResponse),
+      setFundManager: jest.fn<() => Promise<{ wait: jest.Mock }>>().mockResolvedValue(txResponse),
+      withdrawServiceFees: jest.fn<() => Promise<{ wait: jest.Mock }>>().mockResolvedValue(txResponse),
+      isTokenWhitelisted: jest.fn<() => Promise<boolean>>().mockResolvedValue(true),
+      getServiceFee: jest.fn<() => Promise<number>>().mockResolvedValue(100),
+      getValidationCriteria: jest.fn<() => Promise<{ requiredTraits: string[]; additionalCriteria: string; requireOperatingAgreement: boolean; requireDefinition: boolean }>>().mockResolvedValue({
+        requiredTraits: ['foo'],
+        additionalCriteria: '{}',
+        requireOperatingAgreement: true,
+        requireDefinition: false
+      }),
+      isCompatibleDeedNFT: jest.fn<() => Promise<boolean>>().mockResolvedValue(true),
+      registerOperatingAgreement: jest.fn<() => Promise<{ wait: jest.Mock }>>().mockResolvedValue(txResponse),
+      validateOperatingAgreement: jest.fn<() => Promise<boolean>>().mockResolvedValue(true),
+      getRoyaltyFeePercentage: jest.fn<() => Promise<number>>().mockResolvedValue(5),
+      setRoyaltyFeePercentage: jest.fn<() => Promise<{ wait: jest.Mock }>>().mockResolvedValue(txResponse),
+      getRoyaltyReceiver: jest.fn<() => Promise<string>>().mockResolvedValue('0x123'),
+      setRoyaltyReceiver: jest.fn<() => Promise<{ wait: jest.Mock }>>().mockResolvedValue(txResponse)
+    };
+  });
+
+  it('should get base URI', async () => {
+    const result = await validatorApi.getBaseUri(contract);
+    expect(contract.getBaseUri).toHaveBeenCalled();
+    expect(result).toBe('baseURI');
+  });
+  it('should set base URI', async () => {
+    await validatorApi.setBaseUri(contract, 'newURI');
+    expect(contract.setBaseUri).toHaveBeenCalledWith('newURI');
+    expect(txResponse.wait).toHaveBeenCalled();
+  });
+  it('should get default operating agreement', async () => {
+    const result = await validatorApi.getDefaultOperatingAgreement(contract);
+    expect(contract.defaultOperatingAgreement).toHaveBeenCalled();
+    expect(result).toBe('defaultOA');
+  });
+  it('should set default operating agreement', async () => {
+    await validatorApi.setDefaultOperatingAgreement(contract, 'uri');
+    expect(contract.setDefaultOperatingAgreement).toHaveBeenCalledWith('uri');
+    expect(txResponse.wait).toHaveBeenCalled();
+  });
+  it('should set operating agreement name', async () => {
+    await validatorApi.setOperatingAgreementName(contract, 'uri', 'name');
+    expect(contract.setOperatingAgreementName).toHaveBeenCalledWith('uri', 'name');
+    expect(txResponse.wait).toHaveBeenCalled();
+  });
+  it('should remove operating agreement name', async () => {
+    await validatorApi.removeOperatingAgreementName(contract, 'uri');
+    expect(contract.removeOperatingAgreementName).toHaveBeenCalledWith('uri');
+    expect(txResponse.wait).toHaveBeenCalled();
+  });
+  it('should set DeedNFT', async () => {
+    await validatorApi.setDeedNFT(contract, '0xabc');
+    expect(contract.setDeedNFT).toHaveBeenCalledWith('0xabc');
+    expect(txResponse.wait).toHaveBeenCalled();
+  });
+  it('should add compatible DeedNFT', async () => {
+    await validatorApi.addCompatibleDeedNFT(contract, '0xabc');
+    expect(contract.addCompatibleDeedNFT).toHaveBeenCalledWith('0xabc');
+    expect(txResponse.wait).toHaveBeenCalled();
+  });
+  it('should remove compatible DeedNFT', async () => {
+    await validatorApi.removeCompatibleDeedNFT(contract, '0xabc');
+    expect(contract.removeCompatibleDeedNFT).toHaveBeenCalledWith('0xabc');
+    expect(txResponse.wait).toHaveBeenCalled();
+  });
+  it('should set primary DeedNFT', async () => {
+    await validatorApi.setPrimaryDeedNFT(contract, '0xabc');
+    expect(contract.setPrimaryDeedNFT).toHaveBeenCalledWith('0xabc');
+    expect(txResponse.wait).toHaveBeenCalled();
+  });
+  it('should set asset type support', async () => {
+    await validatorApi.setAssetTypeSupport(contract, 1, true);
+    expect(contract.setAssetTypeSupport).toHaveBeenCalledWith(1, true);
+    expect(txResponse.wait).toHaveBeenCalled();
+  });
+  it('should set validation criteria', async () => {
+    await validatorApi.setValidationCriteria(contract, 1, ['foo'], '{}', true, false);
+    expect(contract.setValidationCriteria).toHaveBeenCalledWith(1, ['foo'], '{}', true, false);
+    expect(txResponse.wait).toHaveBeenCalled();
+  });
+  it('should get operating agreement name', async () => {
+    const result = await validatorApi.operatingAgreementName(contract, 'uri');
+    expect(contract.operatingAgreementName).toHaveBeenCalledWith('uri');
+    expect(result).toBe('OA Name');
+  });
+  it('should check asset type support', async () => {
+    const result = await validatorApi.supportsAssetType(contract, 1);
+    expect(contract.supportsAssetType).toHaveBeenCalledWith(1);
+    expect(result).toBe(true);
+  });
+  it('should add whitelisted token', async () => {
+    await validatorApi.addWhitelistedToken(contract, '0xabc');
+    expect(contract.addWhitelistedToken).toHaveBeenCalledWith('0xabc');
+    expect(txResponse.wait).toHaveBeenCalled();
+  });
+  it('should remove whitelisted token', async () => {
+    await validatorApi.removeWhitelistedToken(contract, '0xabc');
+    expect(contract.removeWhitelistedToken).toHaveBeenCalledWith('0xabc');
+    expect(txResponse.wait).toHaveBeenCalled();
+  });
+  it('should set service fee', async () => {
+    await validatorApi.setServiceFee(contract, '0xabc', 100);
+    expect(contract.setServiceFee).toHaveBeenCalledWith('0xabc', 100);
+    expect(txResponse.wait).toHaveBeenCalled();
+  });
+  it('should set fund manager', async () => {
+    await validatorApi.setFundManager(contract, '0xabc');
+    expect(contract.setFundManager).toHaveBeenCalledWith('0xabc');
+    expect(txResponse.wait).toHaveBeenCalled();
+  });
+  it('should withdraw service fees', async () => {
+    await validatorApi.withdrawServiceFees(contract, '0xabc');
+    expect(contract.withdrawServiceFees).toHaveBeenCalledWith('0xabc');
+    expect(txResponse.wait).toHaveBeenCalled();
+  });
+  it('should check if token is whitelisted', async () => {
+    const result = await validatorApi.isTokenWhitelisted(contract, '0xabc');
+    expect(contract.isTokenWhitelisted).toHaveBeenCalledWith('0xabc');
+    expect(result).toBe(true);
+  });
+  it('should get service fee', async () => {
+    const result = await validatorApi.getServiceFee(contract, '0xabc');
+    expect(contract.getServiceFee).toHaveBeenCalledWith('0xabc');
+    expect(result).toBe(100);
+  });
+  it('should get validation criteria', async () => {
+    const result = await validatorApi.getValidationCriteria(contract, 1);
+    expect(contract.getValidationCriteria).toHaveBeenCalledWith(1);
+    expect(result).toEqual({
+      requiredTraits: ['foo'],
+      additionalCriteria: '{}',
+      requireOperatingAgreement: true,
+      requireDefinition: false
+    });
+  });
+  it('should check compatible DeedNFT', async () => {
+    const result = await validatorApi.isCompatibleDeedNFT(contract, '0xabc');
+    expect(contract.isCompatibleDeedNFT).toHaveBeenCalledWith('0xabc');
+    expect(result).toBe(true);
+  });
+  it('should register operating agreement', async () => {
+    await validatorApi.registerOperatingAgreement(contract, 'uri', 'name');
+    expect(contract.registerOperatingAgreement).toHaveBeenCalledWith('uri', 'name');
+    expect(txResponse.wait).toHaveBeenCalled();
+  });
+  it('should validate operating agreement', async () => {
+    const result = await validatorApi.validateOperatingAgreement(contract, 'oa');
+    expect(contract.validateOperatingAgreement).toHaveBeenCalledWith('oa');
+    expect(result).toBe(true);
+  });
+  it('should get royalty fee percentage', async () => {
+    const result = await validatorApi.getRoyaltyFeePercentage(contract, 1);
+    expect(contract.getRoyaltyFeePercentage).toHaveBeenCalledWith(1);
+    expect(result).toBe(5);
+  });
+  it('should set royalty fee percentage', async () => {
+    await validatorApi.setRoyaltyFeePercentage(contract, 10);
+    expect(contract.setRoyaltyFeePercentage).toHaveBeenCalledWith(10);
+    expect(txResponse.wait).toHaveBeenCalled();
+  });
+  it('should get royalty receiver', async () => {
+    const result = await validatorApi.getRoyaltyReceiver(contract);
+    expect(contract.getRoyaltyReceiver).toHaveBeenCalled();
+    expect(result).toBe('0x123');
+  });
+  it('should set royalty receiver', async () => {
+    await validatorApi.setRoyaltyReceiver(contract, '0xabc');
+    expect(contract.setRoyaltyReceiver).toHaveBeenCalledWith('0xabc');
+    expect(txResponse.wait).toHaveBeenCalled();
   });
 }); 

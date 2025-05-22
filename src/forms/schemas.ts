@@ -43,11 +43,11 @@ export const DeedNFTFormSchema: FormSchema = {
       type: 'ipfs',
       label: 'IPFS Details Hash',
       required: true,
-      placeholder: 'Qm...',
-      helpText: 'IPFS hash containing the asset details',
+      placeholder: 'Qm... or b... or B... or z... or F...',
+      helpText: 'IPFS hash containing the asset details (CID v0 or v1)',
       validation: {
-        pattern: /^Qm[a-zA-Z0-9]{44}$/,
-        message: 'Invalid IPFS hash format'
+        pattern: /^(Qm[1-9A-HJ-NP-Za-km-z]{44}|b[A-Za-z2-7]{58}|B[A-Z2-7]{58}|z[1-9A-HJ-NP-Za-km-z]{48}|F[0-9A-F]{50})$/,
+        message: 'Invalid IPFS hash format. Must be a valid CID v0 (Qm...) or CID v1 (b..., B..., z..., or F...)'
       }
     },
     {
@@ -200,4 +200,200 @@ export const FundManagerFormSchema: FormSchema = {
       }
     }
   ]
+};
+
+/**
+ * Schema for MetadataRenderer form
+ * Defines fields and validation rules for configuring metadata rendering
+ * 
+ * @example
+ * ```typescript
+ * const form = formFactory.createForm('metadataRenderer');
+ * await form.setValue('tokenId', 1);
+ * await form.setValue('customMetadata', '{"name": "Asset #1"}');
+ * await form.setValue('features', ['Feature 1', 'Feature 2']);
+ * ```
+ */
+export const MetadataRendererFormSchema: FormSchema = {
+  fields: [
+    {
+      name: 'tokenId',
+      type: 'number',
+      label: 'Token ID',
+      required: true,
+      helpText: 'ID of the token to update',
+      validation: {
+        min: 0,
+        message: 'Token ID must be non-negative'
+      }
+    },
+    {
+      name: 'customMetadata',
+      type: 'textarea',
+      label: 'Custom Metadata',
+      required: false,
+      placeholder: 'Enter custom metadata in JSON format...',
+      helpText: 'Custom metadata for the token',
+      validation: {
+        custom: (value) => {
+          try {
+            JSON.parse(value);
+            return true;
+          } catch {
+            return false;
+          }
+        },
+        message: 'Invalid JSON format'
+      }
+    },
+    {
+      name: 'features',
+      type: 'array',
+      label: 'Features',
+      required: false,
+      placeholder: 'Enter features...',
+      helpText: 'Array of features for the token',
+      validation: {
+        custom: (value) => Array.isArray(value) && value.every(v => typeof v === 'string'),
+        message: 'Features must be an array of strings'
+      }
+    },
+    {
+      name: 'assetCondition',
+      type: 'object',
+      label: 'Asset Condition',
+      required: false,
+      fields: [
+        {
+          name: 'generalCondition',
+          type: 'text',
+          label: 'General Condition',
+          required: true,
+          helpText: 'General condition rating of the asset'
+        },
+        {
+          name: 'lastInspectionDate',
+          type: 'date',
+          label: 'Last Inspection Date',
+          required: true,
+          helpText: 'Date of last inspection'
+        },
+        {
+          name: 'knownIssues',
+          type: 'array',
+          label: 'Known Issues',
+          required: false,
+          helpText: 'Array of known issues'
+        },
+        {
+          name: 'improvements',
+          type: 'array',
+          label: 'Improvements',
+          required: false,
+          helpText: 'Array of improvements made'
+        },
+        {
+          name: 'additionalNotes',
+          type: 'textarea',
+          label: 'Additional Notes',
+          required: false,
+          helpText: 'Additional notes about the condition'
+        }
+      ]
+    },
+    {
+      name: 'legalInfo',
+      type: 'object',
+      label: 'Legal Information',
+      required: false,
+      fields: [
+        {
+          name: 'jurisdiction',
+          type: 'text',
+          label: 'Jurisdiction',
+          required: true,
+          helpText: 'Legal jurisdiction'
+        },
+        {
+          name: 'registrationNumber',
+          type: 'text',
+          label: 'Registration Number',
+          required: true,
+          helpText: 'Official registration number'
+        },
+        {
+          name: 'registrationDate',
+          type: 'date',
+          label: 'Registration Date',
+          required: true,
+          helpText: 'Date of registration'
+        },
+        {
+          name: 'documents',
+          type: 'array',
+          label: 'Documents',
+          required: false,
+          helpText: 'Array of legal documents'
+        },
+        {
+          name: 'restrictions',
+          type: 'array',
+          label: 'Restrictions',
+          required: false,
+          helpText: 'Array of legal restrictions'
+        },
+        {
+          name: 'additionalInfo',
+          type: 'textarea',
+          label: 'Additional Information',
+          required: false,
+          helpText: 'Additional legal information'
+        }
+      ]
+    },
+    {
+      name: 'gallery',
+      type: 'array',
+      label: 'Gallery',
+      required: false,
+      placeholder: 'Enter image URLs...',
+      helpText: 'Array of image URLs for the token gallery',
+      validation: {
+        custom: (value) => Array.isArray(value) && value.every(v => typeof v === 'string' && v.startsWith('http')),
+        message: 'Gallery must be an array of valid URLs'
+      }
+    },
+    {
+      name: 'animationURL',
+      type: 'text',
+      label: 'Animation URL',
+      required: false,
+      placeholder: 'Enter animation URL...',
+      helpText: 'URL for the token animation',
+      validation: {
+        custom: (value) => !value || (typeof value === 'string' && Boolean(value.match(/\.(mp4|webm|gif)$/i))),
+        message: 'Animation URL must be a valid video or GIF file'
+      }
+    },
+    {
+      name: 'externalLink',
+      type: 'text',
+      label: 'External Link',
+      required: false,
+      placeholder: 'Enter external link...',
+      helpText: 'External link for the token',
+      validation: {
+        custom: (value) => !value || (typeof value === 'string' && value.startsWith('http')),
+        message: 'External link must be a valid URL'
+      }
+    }
+  ],
+  validate: async (values) => {
+    // Add any form-level validation here
+    return true;
+  },
+  transform: (values) => {
+    // Transform values before submission if needed
+    return values;
+  }
 }; 

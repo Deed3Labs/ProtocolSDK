@@ -26,9 +26,9 @@ import {
   setTokenLegalInfo,
   getTokenLegalInfo
 } from '../../api/metadataRenderer';
-import { IMetadataRenderer } from '../../contracts/IMetadataRenderer';
+import { IMetadataRendererContract } from '../../contracts/IMetadataRenderer';
 import { mintAsset } from '../../api/deedNFT';
-import { IDeedNFT } from '../../contracts/IDeedNFT';
+import { IDeedNFTContract } from '../../contracts/IDeedNFT';
 import { AssetType } from '../../types/contracts';
 
 /**
@@ -324,7 +324,7 @@ describe('MetadataRenderer API', () => {
      * @description Tests retrieving token URI
      */
     it('should get token URI', async () => {
-      const uri = await tokenURI(metadataRenderer, Number(tokenId));
+      const uri = await tokenURI(metadataRenderer as IMetadataRendererContract, Number(tokenId));
       expect(uri).toBe('ipfs://metadata');
     });
 
@@ -366,7 +366,7 @@ describe('MetadataRenderer API', () => {
         [Number(tokenId), features]
       );
 
-      const retrievedFeatures = await getTokenFeatures(metadataRenderer, Number(tokenId));
+      const retrievedFeatures = await getTokenFeatures(metadataRenderer as IMetadataRendererContract, Number(tokenId));
       expect(retrievedFeatures).toEqual(features);
     });
   });
@@ -400,7 +400,7 @@ describe('MetadataRenderer API', () => {
         ]
       );
 
-      const retrievedCondition = await getAssetCondition(metadataRenderer, Number(tokenId));
+      const retrievedCondition = await getAssetCondition(metadataRenderer as IMetadataRendererContract, Number(tokenId));
       expect(retrievedCondition).toEqual([
         condition.condition,
         condition.lastInspectionDate,
@@ -442,7 +442,7 @@ describe('MetadataRenderer API', () => {
         ]
       );
 
-      const retrievedInfo = await getTokenLegalInfo(metadataRenderer, Number(tokenId));
+      const retrievedInfo = await getTokenLegalInfo(metadataRenderer as IMetadataRendererContract, Number(tokenId));
       expect(retrievedInfo).toEqual([
         legalInfo.jurisdiction,
         legalInfo.registrationNumber,
@@ -452,5 +452,13 @@ describe('MetadataRenderer API', () => {
         legalInfo.additionalInfo
       ]);
     });
+  });
+
+  it('should sync trait update', async () => {
+    const tokenId = 1;
+    const traitKey = 'testTrait';
+    const traitValue = 'testValue';
+    await syncTraitUpdate(metadataRenderer as IMetadataRendererContract, tokenId, traitKey, traitValue);
+    expect(metadataRenderer.syncTraitUpdate).toHaveBeenCalledWith(tokenId, traitKey, traitValue);
   });
 }); 

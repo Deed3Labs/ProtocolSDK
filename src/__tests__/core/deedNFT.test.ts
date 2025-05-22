@@ -16,21 +16,18 @@ import { ethers } from 'ethers';
 import { expect, beforeAll, beforeEach } from '@jest/globals';
 import { provider, wallet, TEST_CONFIG, getTestContract, executeContractTransaction } from '../setup';
 import {
-  mintDeedNFT,
-  mintBatchDeedNFT,
+  mintAsset,
   updateMetadata,
   addMinter,
   removeMinter,
-  isMinter,
-  addApprovedMarketplace,
-  removeApprovedMarketplace,
+  setApprovedMarketplace,
   isApprovedMarketplace,
   setRoyaltyEnforcement,
   isRoyaltyEnforced,
   getTransferValidator,
   setTransferValidator
 } from '../../api/deedNFT';
-import { IDeedNFT } from '../../contracts/IDeedNFT';
+import { IDeedNFTContract } from '../../contracts/IDeedNFT';
 import { getContractAddresses } from '../../config/contracts';
 import { ChainId } from '../../types/network';
 
@@ -65,12 +62,12 @@ describe('DeedNFT API', () => {
 
     // Initialize contract with proper ABI
     const deedNFTAbi = [
-      'function mintDeedNFT(address to, uint8 assetType, string metadata, string definition, string configuration, address validator, address royaltyReceiver, uint256 royaltyFee) returns (uint256)',
-      'function mintBatchDeedNFT(address[] to, uint8[] assetType, string[] metadata, string[] definition, string[] configuration, address[] validator, address[] royaltyReceiver, uint256[] royaltyFee) returns (uint256[])',
+      'function mintAsset(address to, uint8 assetType, string metadata, string definition, string configuration, address validator, uint256 salt) returns (uint256)',
+      'function mintBatchDeedNFT(address[] to, uint8[] assetType, string[] metadata, string[] definition, string[] configuration, address[] validator, uint256[] salt) returns (uint256[])',
       'function updateMetadata(uint256 tokenId, string metadata)',
       'function addMinter(address minter)',
       'function removeMinter(address minter)',
-      'function isMinter(address account) view returns (bool)',
+      'function hasRole(bytes32 role, address account) view returns (bool)',
       'function addApprovedMarketplace(address marketplace)',
       'function removeApprovedMarketplace(address marketplace)',
       'function isApprovedMarketplace(address marketplace) view returns (bool)',
@@ -93,13 +90,46 @@ describe('DeedNFT API', () => {
     let transferValidator = ethers.ZeroAddress;
 
     /**
-     * @description Mocks the isMinter function to simulate checking minter status
-     * @param args - Array of arguments containing the account address
-     * @returns Mock minter status
+     * @description Mocks the hasRole function to simulate checking role status
+     * @param args - Array of arguments containing the role and account address
+     * @returns Mock role status
      */
-    jest.spyOn(deedNFT, 'isMinter').mockImplementation(async (...args: any[]) => {
-      const [account] = args;
-      return minters.has(account);
+    jest.spyOn(deedNFT, 'hasRole').mockImplementation(async (...args: any[]) => {
+      const [role, account] = args;
+      if (role === 'MINTER_ROLE') {
+        return minters.has(account);
+      }
+      return false;
+    });
+
+    /**
+     * @description Mocks the mintAsset function to simulate minting a new token
+     * @param args - Array of arguments containing minting parameters
+     * @returns Mock transaction response with token ID
+     */
+    let nextTokenId = 1;
+    jest.spyOn(deedNFT, 'mintAsset').mockImplementation(async (...args: any[]) => {
+      const [to, assetType, metadata, definition, configuration, validator, salt] = args;
+      
+      // Validate parameters
+      if (to === ethers.ZeroAddress || !metadata || !definition || !configuration || validator === ethers.ZeroAddress) {
+        throw new Error('Invalid parameters');
+      }
+
+      const mockTxResponse = {
+        hash: '0xabc',
+        wait: async () => ({
+          status: 1,
+          transactionHash: '0xabc',
+          logs: [{
+            args: {
+              tokenId: nextTokenId
+            }
+          }]
+        })
+      };
+      nextTokenId++;
+      return mockTxResponse;
     });
 
     /**
@@ -233,34 +263,6 @@ describe('DeedNFT API', () => {
     });
 
     /**
-     * @description Mocks the mintDeedNFT function to simulate minting a new DeedNFT
-     * @param args - Array of arguments containing minting parameters
-     * @returns Mock transaction response with token ID
-     */
-    let nextTokenId = 1;
-    jest.spyOn(deedNFT, 'mintDeedNFT').mockImplementation(async (...args: any[]) => {
-      const [to, assetType, metadata, definition, configuration, validator, royaltyReceiver, royaltyFee] = args;
-      
-      // Validate parameters
-      if (to === ethers.ZeroAddress || !metadata || !definition || !configuration || validator === ethers.ZeroAddress) {
-        throw new Error('Invalid parameters');
-      }
-
-      const mockTxResponse = {
-        hash: '0xabc',
-        wait: async () => ({
-          status: 1,
-          transactionHash: '0xabc',
-          logs: [{
-            topics: ['0x0', '0x0', '0x0', nextTokenId.toString()]
-          }]
-        })
-      };
-      nextTokenId++;
-      return mockTxResponse;
-    });
-
-    /**
      * @description Mocks the mintBatchDeedNFT function to simulate batch minting DeedNFTs
      * @param args - Array of arguments containing batch minting parameters
      * @returns Mock transaction response with token IDs
@@ -274,9 +276,11 @@ describe('DeedNFT API', () => {
         wait: async () => ({
           status: 1,
           transactionHash: '0xabc',
-          logs: tokenIds.map(id => ({
-            topics: ['0x0', '0x0', '0x0', id.toString()]
-          }))
+          logs: [{
+            args: {
+              tokenIds: tokenIds
+            }
+          }]
         })
       };
       return mockTxResponse;
@@ -305,37 +309,33 @@ describe('DeedNFT API', () => {
     /**
      * @description Tests minting a new DeedNFT
      */
-    it('should mint a new deed NFT', async () => {
-      const result = await mintDeedNFT(
-        deedNFT,
-        await user1.getAddress(),
-        AssetType.Land,
-        'ipfs://metadata1',
-        'Definition',
-        'Configuration',
-        TEST_CONFIG.contracts.validator!,
-        ethers.ZeroAddress,
-        1
-      );
-      expect(typeof result).toBe('number');
+    it('should mint a deed NFT', async () => {
+      const to = await user1.getAddress();
+      const assetType = AssetType.Land;
+      const metadata = 'ipfs://metadata';
+      const definition = 'ipfs://definition';
+      const configuration = 'ipfs://configuration';
+      const validator = await wallet.getAddress();
+      const salt = 1;
+      const result = await mintAsset(deedNFT as IDeedNFTContract, to, assetType, metadata, definition, configuration, validator, salt);
+      expect(result).toBeDefined();
     });
 
     /**
      * @description Tests minting DeedNFTs with different asset types
      */
     it('should handle different asset types', async () => {
-      const result = await mintDeedNFT(
-        deedNFT,
+      const result = await mintAsset(
+        deedNFT as IDeedNFTContract,
         await user1.getAddress(),
         AssetType.Building,
         'ipfs://metadata2',
         'Definition',
         'Configuration',
         TEST_CONFIG.contracts.validator!,
-        ethers.ZeroAddress,
         2
       );
-      expect(typeof result).toBe('number');
+      expect(result.tokenId).toBeDefined();
     });
 
     /**
@@ -343,18 +343,74 @@ describe('DeedNFT API', () => {
      */
     it('should fail when minting with invalid parameters', async () => {
       await expect(
-        mintDeedNFT(
-          deedNFT,
+        mintAsset(
+          deedNFT as IDeedNFTContract,
           ethers.ZeroAddress,
           AssetType.Land,
           '',
           '',
           '',
           ethers.ZeroAddress,
-          ethers.ZeroAddress,
           0
         )
       ).rejects.toThrow('Invalid parameters');
+    });
+
+    it('should mint a batch of deed NFTs', async () => {
+      const to = [await user1.getAddress(), await user1.getAddress()];
+      const assetType = [AssetType.Land, AssetType.Building];
+      const metadata = ['ipfs://metadata1', 'ipfs://metadata2'];
+      const definition = ['Definition1', 'Definition2'];
+      const configuration = ['Configuration1', 'Configuration2'];
+      const validator = [await wallet.getAddress(), await wallet.getAddress()];
+      const salt = [1, 2];
+      const results = await Promise.all(
+        to.map((toAddr, i) =>
+          mintAsset(
+            deedNFT as IDeedNFTContract,
+            toAddr,
+            assetType[i],
+            metadata[i],
+            definition[i],
+            configuration[i],
+            validator[i],
+            salt[i]
+          )
+        )
+      );
+      expect(results).toHaveLength(2);
+    });
+
+    it('should check if an address is a minter', async () => {
+      const minter = await user1.getAddress();
+      const result = await (deedNFT as IDeedNFTContract).hasRole('MINTER_ROLE', minter);
+      expect(typeof result).toBe('boolean');
+    });
+
+    it('should add a minter', async () => {
+      const minter = await user1.getAddress();
+      const result = await addMinter(deedNFT as IDeedNFTContract, minter);
+      expect(result).toBeUndefined();
+    });
+
+    it('should remove a minter', async () => {
+      const minter = await user1.getAddress();
+      const result = await removeMinter(deedNFT as IDeedNFTContract, minter);
+      expect(result).toBeUndefined();
+    });
+
+    it('should check if an address is a minter after adding', async () => {
+      const minter = await user1.getAddress();
+      await addMinter(deedNFT as IDeedNFTContract, minter);
+      const result = await (deedNFT as IDeedNFTContract).hasRole('MINTER_ROLE', minter);
+      expect(result).toBe(true);
+    });
+
+    it('should check if an address is a minter after removing', async () => {
+      const minter = await user1.getAddress();
+      await removeMinter(deedNFT as IDeedNFTContract, minter);
+      const result = await (deedNFT as IDeedNFTContract).hasRole('MINTER_ROLE', minter);
+      expect(result).toBe(false);
     });
   });
 
@@ -374,7 +430,7 @@ describe('DeedNFT API', () => {
         'addMinter',
         [minterAddress]
       );
-      expect(await isMinter(deedNFT, minterAddress)).toBe(true);
+      expect(await (deedNFT as IDeedNFTContract).hasRole('MINTER_ROLE', minterAddress)).toBe(true);
 
       // Remove minter
       await executeContractTransaction(
@@ -382,7 +438,7 @@ describe('DeedNFT API', () => {
         'removeMinter',
         [minterAddress]
       );
-      expect(await isMinter(deedNFT, minterAddress)).toBe(false);
+      expect(await (deedNFT as IDeedNFTContract).hasRole('MINTER_ROLE', minterAddress)).toBe(false);
     });
   });
 
