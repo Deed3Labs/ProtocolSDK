@@ -9,7 +9,7 @@ import { provider, wallet, TEST_CONFIG, executeContractTransaction } from '../se
 import { mintAsset, updateMetadata } from '../../api/deedNFT';
 import { validateDeed } from '../../api/validator';
 import { getValidatorInfo, isValidatorRegistered } from '../../api/validatorRegistry';
-import { getCommissionBalance } from '../../api/fundManager';
+import { getValidatorFeeBalance } from '../../api/fundManager';
 import { IDeedNFT } from '../../contracts/IDeedNFT';
 import { IFundManager } from '../../contracts/IFundManager';
 import { IValidator } from '../../contracts/IValidator';
@@ -48,7 +48,7 @@ describe('API Integration', () => {
     ];
 
     const fundManagerAbi = [
-      'function getCommissionBalance(address validator, address token) view returns (uint256)'
+      'function getValidatorFeeBalance(address validator, address token) view returns (uint256)'
     ];
 
     const validatorAbi = [
@@ -151,7 +151,7 @@ describe('API Integration', () => {
       return validatedDeeds.has(tokenId.toString());
     });
 
-    jest.spyOn(fundManager, 'getCommissionBalance').mockImplementation(async (...args: any[]) => {
+    jest.spyOn(fundManager, 'getValidatorFeeBalance').mockImplementation(async (...args: any[]) => {
       const [validator, token] = args;
       const validatorBalances = commissionBalances.get(validator) || new Map<string, bigint>();
       return validatorBalances.get(token) || BigInt(0);
@@ -233,6 +233,30 @@ describe('API Integration', () => {
     jest.spyOn(metadataRenderer, 'getTokenFeatures').mockImplementation(async (...args: any[]) => {
       return ['feature1', 'feature2'];
     });
+
+    // Create mock transaction response
+    const mockTxResponse = {
+      hash: '0x123',
+      wait: async () => ({
+        status: 1,
+        logs: [{
+          topics: ['0x0', '0x0', '0x0', '0x1'],
+          data: '0x'
+        }]
+      } as unknown as ethers.TransactionReceipt)
+    } as ethers.TransactionResponse;
+
+    // Mock contract methods
+    const mockContract = {
+      mintDeedNFT: jest.fn().mockResolvedValue(mockTxResponse),
+      mintBatchDeedNFT: jest.fn().mockResolvedValue(mockTxResponse),
+      withdrawValidatorFees: jest.fn().mockResolvedValue(mockTxResponse),
+      getValidatorFeeBalance: jest.fn().mockResolvedValue(BigInt(1000)),
+      setCommissionPercentage: jest.fn().mockResolvedValue(mockTxResponse),
+      setFeeReceiver: jest.fn().mockResolvedValue(mockTxResponse),
+      setValidatorRegistry: jest.fn().mockResolvedValue(mockTxResponse),
+      setDeedNFT: jest.fn().mockResolvedValue(mockTxResponse)
+    };
   });
 
   describe('Complete Deed Lifecycle', () => {
@@ -276,7 +300,7 @@ describe('API Integration', () => {
       );
 
       // 5. Check commission balance
-      const commissionBalance = await getCommissionBalance(
+      const commissionBalance = await getValidatorFeeBalance(
         fundManager,
         validatorAddress,
         ethers.ZeroAddress

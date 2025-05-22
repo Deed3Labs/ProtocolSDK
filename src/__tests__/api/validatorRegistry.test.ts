@@ -16,7 +16,10 @@ import {
   getValidatorsForAssetType,
   isValidatorActive,
   isValidatorRegistered,
-  getValidatorName
+  getValidatorName,
+  registerValidator,
+  getActiveValidators,
+  setFundManager
 } from '../../api/validatorRegistry';
 import { TEST_CONFIG, provider } from '../setup';
 import * as validatorRegistryApi from '../../api/validatorRegistry';
@@ -46,6 +49,18 @@ describe('ValidatorRegistry API', () => {
     // Initialize transaction manager
     transactionManager = new TransactionManager(provider);
 
+    // Create mock transaction response
+    const mockTxResponse = {
+      hash: '0x123',
+      wait: async () => ({
+        status: 1,
+        logs: [{
+          topics: ['0x0', '0x0', '0x0', '0x1'],
+          data: '0x'
+        }]
+      } as unknown as ethers.TransactionReceipt)
+    } as ethers.TransactionResponse;
+
     // Create mock contract with proper types
     contract = {
       // Read functions
@@ -62,9 +77,14 @@ describe('ValidatorRegistry API', () => {
       getValidatorName: jest.fn<() => Promise<string>>().mockResolvedValue(validValidatorName),
       getValidatorAssetTypes: jest.fn<() => Promise<number[]>>().mockResolvedValue([validAssetTypeId]),
       getSupportedAssetTypes: jest.fn<() => Promise<number[]>>().mockResolvedValue([validAssetTypeId]),
+      getActiveValidators: jest.fn<() => Promise<string[]>>().mockResolvedValue([validValidatorAddress]),
+
+      // Write functions
       updateValidatorName: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
       updateValidatorStatus: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
       removeValidator: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+      registerValidator: jest.fn<() => Promise<ethers.TransactionResponse>>().mockResolvedValue(mockTxResponse),
+      setFundManager: jest.fn<() => Promise<ethers.TransactionResponse>>().mockResolvedValue(mockTxResponse),
 
       interface: {
         format: () => ({})
@@ -291,6 +311,62 @@ describe('ValidatorRegistry API', () => {
     it('should remove validator', async () => {
       await validatorRegistryApi.removeValidator(contract, '0xabc');
       expect(contract.removeValidator).toHaveBeenCalledWith('0xabc');
+    });
+  });
+
+  describe('Validator Registration', () => {
+    it('should register validator successfully', async () => {
+      const name = 'New Validator';
+      const description = 'Test Description';
+      const supportedAssetTypes = [1, 2];
+      await registerValidator(contract, validValidatorAddress, name, description, supportedAssetTypes);
+      expect(contract.registerValidator).toHaveBeenCalledWith(
+        validValidatorAddress,
+        name,
+        description,
+        supportedAssetTypes
+      );
+    });
+
+    it('should handle empty supported asset types in registration', async () => {
+      const name = 'New Validator';
+      const description = 'Test Description';
+      await registerValidator(contract, validValidatorAddress, name, description, []);
+      expect(contract.registerValidator).toHaveBeenCalledWith(
+        validValidatorAddress,
+        name,
+        description,
+        []
+      );
+    });
+  });
+
+  describe('Active Validators', () => {
+    it('should get active validators successfully', async () => {
+      const result = await getActiveValidators(contract);
+      expect(result).toEqual([validValidatorAddress]);
+      expect(contract.getActiveValidators).toHaveBeenCalled();
+    });
+
+    it('should handle empty active validators list', async () => {
+      jest.spyOn(contract, 'getActiveValidators').mockResolvedValueOnce([]);
+      const result = await getActiveValidators(contract);
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('Fund Manager Management', () => {
+    it('should set fund manager successfully', async () => {
+      const fundManager = '0x1234567890123456789012345678901234567890';
+      await setFundManager(contract, fundManager);
+      expect(contract.setFundManager).toHaveBeenCalledWith(fundManager);
+    });
+
+    it('should handle invalid fund manager address', async () => {
+      const invalidAddress = '0xinvalid';
+      jest.spyOn(contract, 'setFundManager').mockRejectedValueOnce(new Error('Invalid fund manager address'));
+      await expect(setFundManager(contract, invalidAddress))
+        .rejects.toThrow('Invalid fund manager address');
     });
   });
 }); 

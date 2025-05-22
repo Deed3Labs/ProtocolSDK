@@ -31,7 +31,17 @@ import {
   setPrimaryDeedNFT,
   addCompatibleDeedNFT,
   removeCompatibleDeedNFT,
-  isCompatibleDeedNFT
+  isCompatibleDeedNFT,
+  getBaseUri,
+  setBaseUri,
+  setDefaultOperatingAgreement,
+  setOperatingAgreementName,
+  removeOperatingAgreementName,
+  setDeedNFT,
+  setAssetTypeSupport,
+  supportsAssetType,
+  setupValidationCriteria,
+  setFundManager
 } from '../../api/validator';
 import { TEST_CONFIG, provider } from '../setup';
 import * as validatorApi from '../../api/validator';
@@ -87,6 +97,8 @@ describe('Validator API', () => {
       getRoyaltyReceiver: jest.fn<() => Promise<string>>().mockResolvedValue(validAddress),
       isCompatibleDeedNFT: jest.fn<() => Promise<boolean>>().mockResolvedValue(true),
       isDeedValidated: jest.fn<() => Promise<boolean>>().mockResolvedValue(true),
+      getBaseUri: jest.fn<() => Promise<string>>().mockResolvedValue('https://example.com/'),
+      supportsAssetType: jest.fn<() => Promise<boolean>>().mockResolvedValue(true),
 
       // Write functions
       setValidationCriteria: jest.fn<() => Promise<ethers.TransactionResponse>>().mockResolvedValue(mockTxResponse),
@@ -100,6 +112,14 @@ describe('Validator API', () => {
       setPrimaryDeedNFT: jest.fn<() => Promise<ethers.TransactionResponse>>().mockResolvedValue(mockTxResponse),
       addCompatibleDeedNFT: jest.fn<() => Promise<ethers.TransactionResponse>>().mockResolvedValue(mockTxResponse),
       removeCompatibleDeedNFT: jest.fn<() => Promise<ethers.TransactionResponse>>().mockResolvedValue(mockTxResponse),
+      setBaseUri: jest.fn<() => Promise<ethers.TransactionResponse>>().mockResolvedValue(mockTxResponse),
+      setDefaultOperatingAgreement: jest.fn<() => Promise<ethers.TransactionResponse>>().mockResolvedValue(mockTxResponse),
+      setOperatingAgreementName: jest.fn<() => Promise<ethers.TransactionResponse>>().mockResolvedValue(mockTxResponse),
+      removeOperatingAgreementName: jest.fn<() => Promise<ethers.TransactionResponse>>().mockResolvedValue(mockTxResponse),
+      setDeedNFT: jest.fn<() => Promise<ethers.TransactionResponse>>().mockResolvedValue(mockTxResponse),
+      setAssetTypeSupport: jest.fn<() => Promise<ethers.TransactionResponse>>().mockResolvedValue(mockTxResponse),
+      setupValidationCriteria: jest.fn<() => Promise<ethers.TransactionResponse>>().mockResolvedValue(mockTxResponse),
+      setFundManager: jest.fn<() => Promise<ethers.TransactionResponse>>().mockResolvedValue(mockTxResponse),
 
       interface: {
         format: () => ({})
@@ -353,6 +373,100 @@ describe('Validator API', () => {
         true,
         true
       )).rejects.toThrow('Transaction failed');
+    });
+  });
+
+  describe('Base URI Management', () => {
+    it('should get base URI successfully', async () => {
+      const result = await getBaseUri(contract);
+      expect(result).toBe('https://example.com/');
+      expect(contract.getBaseUri).toHaveBeenCalled();
+    });
+
+    it('should set base URI successfully', async () => {
+      const newBaseUri = 'https://new-example.com/';
+      await setBaseUri(contract, newBaseUri);
+      expect(contract.setBaseUri).toHaveBeenCalledWith(newBaseUri);
+    });
+  });
+
+  describe('Operating Agreement Management', () => {
+    it('should set default operating agreement successfully', async () => {
+      const newAgreement = 'https://example.com/new-agreement';
+      await setDefaultOperatingAgreement(contract, newAgreement);
+      expect(contract.setDefaultOperatingAgreement).toHaveBeenCalledWith(newAgreement);
+    });
+
+    it('should set operating agreement name successfully', async () => {
+      const uri = 'https://example.com/agreement';
+      const name = 'New Agreement Name';
+      await setOperatingAgreementName(contract, uri, name);
+      expect(contract.setOperatingAgreementName).toHaveBeenCalledWith(uri, name);
+    });
+
+    it('should remove operating agreement name successfully', async () => {
+      const uri = 'https://example.com/agreement';
+      await removeOperatingAgreementName(contract, uri);
+      expect(contract.removeOperatingAgreementName).toHaveBeenCalledWith(uri);
+    });
+  });
+
+  describe('DeedNFT Management', () => {
+    it('should set deed NFT successfully', async () => {
+      const deedNFT = '0x1234567890123456789012345678901234567890';
+      await setDeedNFT(contract, deedNFT);
+      expect(contract.setDeedNFT).toHaveBeenCalledWith(deedNFT);
+    });
+
+    it('should add compatible deed NFT successfully', async () => {
+      const deedNFT = '0x1234567890123456789012345678901234567890';
+      await addCompatibleDeedNFT(contract, deedNFT);
+      expect(contract.addCompatibleDeedNFT).toHaveBeenCalledWith(deedNFT);
+    });
+
+    it('should remove compatible deed NFT successfully', async () => {
+      const deedNFT = '0x1234567890123456789012345678901234567890';
+      await removeCompatibleDeedNFT(contract, deedNFT);
+      expect(contract.removeCompatibleDeedNFT).toHaveBeenCalledWith(deedNFT);
+    });
+
+    it('should check if deed NFT is compatible successfully', async () => {
+      const deedNFT = '0x1234567890123456789012345678901234567890';
+      const result = await isCompatibleDeedNFT(contract, deedNFT);
+      expect(result).toBe(true);
+      expect(contract.isCompatibleDeedNFT).toHaveBeenCalledWith(deedNFT);
+    });
+  });
+
+  describe('Asset Type Management', () => {
+    it('should set asset type support successfully', async () => {
+      const assetTypeId = 1;
+      const isSupported = true;
+      await setAssetTypeSupport(contract, assetTypeId, isSupported);
+      expect(contract.setAssetTypeSupport).toHaveBeenCalledWith(assetTypeId, isSupported);
+    });
+
+    it('should check if asset type is supported successfully', async () => {
+      const assetTypeId = 1;
+      const result = await supportsAssetType(contract, assetTypeId);
+      expect(result).toBe(true);
+      expect(contract.supportsAssetType).toHaveBeenCalledWith(assetTypeId);
+    });
+  });
+
+  describe('Validation Criteria Management', () => {
+    it('should setup validation criteria successfully', async () => {
+      const assetTypeId = 1;
+      await setupValidationCriteria(contract, assetTypeId);
+      expect(contract.setupValidationCriteria).toHaveBeenCalledWith(assetTypeId);
+    });
+  });
+
+  describe('Fund Manager Management', () => {
+    it('should set fund manager successfully', async () => {
+      const fundManager = '0x1234567890123456789012345678901234567890';
+      await setFundManager(contract, fundManager);
+      expect(contract.setFundManager).toHaveBeenCalledWith(fundManager);
     });
   });
 });

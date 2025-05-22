@@ -25,7 +25,7 @@ export interface IFundManagerInterface extends ethers.Interface {
       salt: ethers.BigNumberish;
     }>): Promise<ethers.ContractTransaction>;
     
-    getCommissionBalance(validator: string, token: string): Promise<ethers.BigNumberish>;
+    getValidatorFeeBalance(validator: string, token: string): Promise<ethers.BigNumberish>;
     
     withdrawValidatorFees(validator: string, token: string): Promise<ethers.ContractTransaction>;
     
@@ -50,6 +50,8 @@ export interface IFundManagerInterface extends ethers.Interface {
       amount: ethers.BigNumberish,
       token: string
     ): Promise<ethers.ContractTransaction>;
+
+    updateValidatorRoles(): Promise<ethers.ContractTransaction>;
   };
 }
 
@@ -96,7 +98,7 @@ export const IFundManager = {
         { name: 'validator', type: 'address' },
         { name: 'token', type: 'address' }
       ],
-      name: 'getCommissionBalance',
+      name: 'getValidatorFeeBalance',
       outputs: [{ name: '', type: 'uint256' }],
       stateMutability: 'view',
       type: 'function'
@@ -174,6 +176,13 @@ export const IFundManager = {
         { name: 'token', type: 'address' }
       ],
       name: 'collectCommission',
+      outputs: [],
+      stateMutability: 'nonpayable',
+      type: 'function'
+    },
+    {
+      inputs: [],
+      name: 'updateValidatorRoles',
       outputs: [],
       stateMutability: 'nonpayable',
       type: 'function'

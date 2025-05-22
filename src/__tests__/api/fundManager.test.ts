@@ -14,7 +14,7 @@ import {
   mintDeedNFT,
   mintBatchDeedNFT,
   withdrawValidatorFees,
-  getCommissionBalance,
+  getValidatorFeeBalance,
   setCommissionPercentage,
   setFeeReceiver,
   setValidatorRegistry,
@@ -23,7 +23,8 @@ import {
   commissionPercentage,
   deedNFT,
   formatFee,
-  collectCommission
+  collectCommission,
+  updateValidatorRoles
 } from '../../api/fundManager';
 import { TEST_CONFIG, provider } from '../setup';
 import { TransactionManager } from '../../utils/transactionManager';
@@ -116,7 +117,7 @@ describe('FundManager API', () => {
     // Create mock contract with proper types
     contract = {
       // Read functions
-      getCommissionBalance: jest.fn<() => Promise<number>>().mockResolvedValue(validCommissionBalance),
+      getValidatorFeeBalance: jest.fn<() => Promise<number>>().mockResolvedValue(validCommissionBalance),
       getCommissionPercentage: jest.fn<() => Promise<number>>().mockResolvedValue(validCommissionPercentage),
       commissionPercentage: jest.fn<() => Promise<number>>().mockResolvedValue(validCommissionPercentage),
       deedNFT: jest.fn<() => Promise<string>>().mockResolvedValue(validDeedNFT),
@@ -131,6 +132,7 @@ describe('FundManager API', () => {
       setValidatorRegistry: jest.fn<() => Promise<ethers.TransactionResponse>>().mockResolvedValue(mockTxResponse),
       setDeedNFT: jest.fn<() => Promise<ethers.TransactionResponse>>().mockResolvedValue(mockTxResponse),
       collectCommission: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+      updateValidatorRoles: jest.fn<() => Promise<ethers.TransactionResponse>>().mockResolvedValue(mockTxResponse),
 
       interface: {
         format: () => ({})
@@ -278,20 +280,31 @@ describe('FundManager API', () => {
     });
 
     /**
-     * @description Tests successful retrieval of commission balance
+     * @description Tests successful retrieval of validator fee balance
      */
-    it('should get commission balance successfully', async () => {
-      const result = await getCommissionBalance(contract, validValidatorContract, validToken);
+    it('should get validator fee balance successfully', async () => {
+      const result = await getValidatorFeeBalance(contract, validValidatorContract, validToken);
       expect(result).toBe(validCommissionBalance);
-      expect(contract.getCommissionBalance).toHaveBeenCalledWith(validValidatorContract, validToken);
+      expect(contract.getValidatorFeeBalance).toHaveBeenCalledWith(validValidatorContract, validToken);
     });
 
     /**
      * @description Tests successful setting of commission percentage
      */
     it('should set commission percentage successfully', async () => {
-      await setCommissionPercentage(contract, validCommissionPercentage);
-      expect(contract.setCommissionPercentage).toHaveBeenCalledWith(validCommissionPercentage);
+      const newPercentage = 250; // 25%
+      await setCommissionPercentage(contract, newPercentage);
+      expect(contract.setCommissionPercentage).toHaveBeenCalledWith(newPercentage);
+    });
+
+    /**
+     * @description Tests handling of commission percentage range validation
+     */
+    it('should handle commission percentage range validation', async () => {
+      const invalidPercentage = 1001; // Exceeds max of 1000
+      jest.spyOn(contract, 'setCommissionPercentage').mockRejectedValueOnce(new Error('Commission percentage must be between 0 and 1000'));
+      await expect(setCommissionPercentage(contract, invalidPercentage))
+        .rejects.toThrow('Commission percentage must be between 0 and 1000');
     });
 
     /**
@@ -303,21 +316,19 @@ describe('FundManager API', () => {
     });
 
     /**
-     * @description Tests handling of zero commission balance
+     * @description Tests handling of update validator roles
      */
-    it('should handle zero commission balance', async () => {
-      jest.spyOn(contract, 'getCommissionBalance').mockResolvedValueOnce(0);
-      const result = await getCommissionBalance(contract, validValidatorContract, validToken);
-      expect(result).toBe(0);
+    it('should update validator roles successfully', async () => {
+      await updateValidatorRoles(contract);
+      expect(contract.updateValidatorRoles).toHaveBeenCalled();
     });
 
     /**
-     * @description Tests handling of maximum commission percentage
+     * @description Tests handling of empty validator list in updateValidatorRoles
      */
-    it('should handle maximum commission percentage', async () => {
-      const maxPercentage = 100;
-      await setCommissionPercentage(contract, maxPercentage);
-      expect(contract.setCommissionPercentage).toHaveBeenCalledWith(maxPercentage);
+    it('should handle empty validator list in updateValidatorRoles', async () => {
+      await updateValidatorRoles(contract);
+      expect(contract.updateValidatorRoles).toHaveBeenCalled();
     });
   });
 
@@ -397,9 +408,9 @@ describe('FundManager API', () => {
      * @description Tests handling of commission balance query errors
      */
     it('should handle commission balance query errors', async () => {
-      jest.spyOn(contract, 'getCommissionBalance').mockRejectedValue(new Error('Failed to get commission balance'));
-      await expect(getCommissionBalance(contract, validValidatorContract, validToken))
-        .rejects.toThrow('Failed to get commission balance');
+      jest.spyOn(contract, 'getValidatorFeeBalance').mockRejectedValue(new Error('Failed to get validator fee balance'));
+      await expect(getValidatorFeeBalance(contract, validValidatorContract, validToken))
+        .rejects.toThrow('Failed to get validator fee balance');
     });
 
     /**
@@ -518,12 +529,11 @@ describe('FundManager API', () => {
     });
   });
 
-  describe('getCommissionBalance', () => {
-    it('should get the commission balance', async () => {
+  describe('getValidatorFeeBalance', () => {
+    it('should get the validator fee balance', async () => {
       const validator = '0x1234567890123456789012345678901234567890';
-      const token = '0x1234567890123456789012345678901234567890';
-      const balance = await getCommissionBalance(contract, validator, token);
-      expect(contract.getCommissionBalance).toHaveBeenCalledWith(validator, token);
+      const balance = await getValidatorFeeBalance(contract, validator, validToken);
+      expect(contract.getValidatorFeeBalance).toHaveBeenCalledWith(validator, validToken);
       expect(balance).toBeDefined();
     });
   });

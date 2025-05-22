@@ -135,16 +135,75 @@ export const ValidatorFormSchema: FormSchema = {
       }
     },
     {
-      name: 'commissionPercentage',
+      name: 'baseUri',
+      type: 'text',
+      label: 'Base URI',
+      required: true,
+      placeholder: 'https://...',
+      helpText: 'Base URI for token metadata',
+      validation: {
+        pattern: /^https?:\/\/.+/,
+        message: 'Must be a valid HTTP(S) URL'
+      }
+    },
+    {
+      name: 'defaultOperatingAgreement',
+      type: 'text',
+      label: 'Default Operating Agreement URI',
+      required: true,
+      placeholder: 'https://...',
+      helpText: 'URI for the default operating agreement',
+      validation: {
+        pattern: /^https?:\/\/.+/,
+        message: 'Must be a valid HTTP(S) URL'
+      }
+    },
+    {
+      name: 'serviceFee',
       type: 'number',
-      label: 'Commission Percentage',
+      label: 'Service Fee',
       required: true,
       validation: {
         min: 0,
-        max: 100,
-        message: 'Commission must be between 0 and 100'
+        message: 'Service fee must be non-negative'
       },
-      helpText: 'Commission percentage for validation services'
+      helpText: 'Service fee for validation (in wei)'
+    },
+    {
+      name: 'royaltyFeePercentage',
+      type: 'number',
+      label: 'Royalty Fee Percentage',
+      required: true,
+      validation: {
+        min: 0,
+        max: 1000,
+        message: 'Royalty fee must be between 0 and 1000'
+      },
+      helpText: 'Royalty fee percentage (in basis points, 1000 = 100%)'
+    },
+    {
+      name: 'royaltyReceiver',
+      type: 'address',
+      label: 'Royalty Receiver Address',
+      required: true,
+      placeholder: '0x...',
+      helpText: 'Address that will receive royalty fees',
+      validation: {
+        pattern: /^0x[a-fA-F0-9]{40}$/,
+        message: 'Invalid Ethereum address'
+      }
+    },
+    {
+      name: 'fundManager',
+      type: 'address',
+      label: 'Fund Manager Address',
+      required: true,
+      placeholder: '0x...',
+      helpText: 'Address of the FundManager contract',
+      validation: {
+        pattern: /^0x[a-fA-F0-9]{40}$/,
+        message: 'Invalid Ethereum address'
+      }
     }
   ]
 };
@@ -182,10 +241,10 @@ export const FundManagerFormSchema: FormSchema = {
       required: true,
       validation: {
         min: 0,
-        max: 100,
-        message: 'Commission must be between 0 and 100'
+        max: 1000,
+        message: 'Commission must be between 0 and 1000'
       },
-      helpText: 'Default commission percentage for validators'
+      helpText: 'Default commission percentage for validators (in basis points, 1000 = 100%)'
     },
     {
       name: 'validatorRegistry',
@@ -194,6 +253,18 @@ export const FundManagerFormSchema: FormSchema = {
       required: true,
       placeholder: '0x...',
       helpText: 'Address of the validator registry contract',
+      validation: {
+        pattern: /^0x[a-fA-F0-9]{40}$/,
+        message: 'Invalid Ethereum address'
+      }
+    },
+    {
+      name: 'deedNFT',
+      type: 'address',
+      label: 'DeedNFT Contract Address',
+      required: true,
+      placeholder: '0x...',
+      helpText: 'Address of the DeedNFT contract',
       validation: {
         pattern: /^0x[a-fA-F0-9]{40}$/,
         message: 'Invalid Ethereum address'
@@ -385,6 +456,71 @@ export const MetadataRendererFormSchema: FormSchema = {
       validation: {
         custom: (value) => !value || (typeof value === 'string' && value.startsWith('http')),
         message: 'External link must be a valid URL'
+      }
+    }
+  ],
+  validate: async (values) => {
+    // Add any form-level validation here
+    return true;
+  },
+  transform: (values) => {
+    // Transform values before submission if needed
+    return values;
+  }
+};
+
+export const ValidatorRegistryFormSchema: FormSchema = {
+  fields: [
+    {
+      name: 'name',
+      type: 'text',
+      label: 'Validator Name',
+      required: true,
+      placeholder: 'Enter validator name...',
+      helpText: 'Name of the validator'
+    },
+    {
+      name: 'description',
+      type: 'textarea',
+      label: 'Description',
+      required: true,
+      placeholder: 'Enter validator description...',
+      helpText: 'Description of the validator\'s services'
+    },
+    {
+      name: 'supportedAssetTypes',
+      type: 'select',
+      label: 'Supported Asset Types',
+      required: true,
+      options: ['Land', 'Building', 'Commercial'],
+      helpText: 'Types of assets this validator can validate',
+      validation: {
+        custom: (value) => Array.isArray(value) && value.every(v => ['Land', 'Building', 'Commercial'].includes(v)),
+        message: 'Invalid asset type selection'
+      }
+    },
+    {
+      name: 'fundManager',
+      type: 'address',
+      label: 'Fund Manager Address',
+      required: true,
+      placeholder: '0x...',
+      helpText: 'Address of the FundManager contract',
+      validation: {
+        pattern: /^0x[a-fA-F0-9]{40}$/,
+        message: 'Invalid Ethereum address'
+      }
+    },
+    {
+      name: 'activeValidators',
+      type: 'array',
+      label: 'Active Validators',
+      required: false,
+      placeholder: 'Enter validator addresses...',
+      helpText: 'List of active validator addresses',
+      validation: {
+        custom: (value) => Array.isArray(value) && value.every(v => /^0x[a-fA-F0-9]{40}$/.test(v)),
+        message: 'Each validator address must be a valid Ethereum address'
       }
     }
   ],

@@ -18,6 +18,14 @@ export interface IValidatorRegistryInterface extends ethers.Interface {
     updateValidatorName(validator: string, newName: string): Promise<ethers.ContractTransaction>;
     updateValidatorStatus(validator: string, isActive: boolean): Promise<ethers.ContractTransaction>;
     removeValidator(validator: string): Promise<ethers.ContractTransaction>;
+    registerValidator(
+      validator: string,
+      name: string,
+      description: string,
+      supportedAssetTypes: number[]
+    ): Promise<ethers.ContractTransaction>;
+    getActiveValidators(): Promise<string[]>;
+    setFundManager(fundManager: string): Promise<ethers.ContractTransaction>;
   };
 }
 
@@ -231,6 +239,60 @@ export const IValidatorRegistry = {
         }
       ],
       name: "removeValidator",
+      outputs: [],
+      stateMutability: "nonpayable",
+      type: "function"
+    },
+    {
+      inputs: [
+        {
+          internalType: "address",
+          name: "validator",
+          type: "address"
+        },
+        {
+          internalType: "string",
+          name: "name",
+          type: "string"
+        },
+        {
+          internalType: "string",
+          name: "description",
+          type: "string"
+        },
+        {
+          internalType: "uint8[]",
+          name: "supportedAssetTypes",
+          type: "uint8[]"
+        }
+      ],
+      name: "registerValidator",
+      outputs: [],
+      stateMutability: "nonpayable",
+      type: "function"
+    },
+    {
+      inputs: [],
+      name: "getActiveValidators",
+      outputs: [
+        {
+          internalType: "address[]",
+          name: "",
+          type: "address[]"
+        }
+      ],
+      stateMutability: "view",
+      type: "function"
+    },
+    {
+      inputs: [
+        {
+          internalType: "address",
+          name: "fundManager",
+          type: "address"
+        }
+      ],
+      name: "setFundManager",
       outputs: [],
       stateMutability: "nonpayable",
       type: "function"

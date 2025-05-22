@@ -5,7 +5,7 @@
  * @group FormSchemas
  * @group Unit
  */
-import { DeedNFTFormSchema, ValidatorFormSchema, FundManagerFormSchema, MetadataRendererFormSchema } from '../../forms/schemas';
+import { DeedNFTFormSchema, ValidatorFormSchema, FundManagerFormSchema, MetadataRendererFormSchema, ValidatorRegistryFormSchema } from '../../forms/schemas';
 
 /**
  * Unit tests for the predefined form schemas.
@@ -65,21 +65,26 @@ describe('Form Schemas', () => {
    */
   describe('ValidatorFormSchema', () => {
     it('should have all required fields', () => {
-      expect(ValidatorFormSchema.fields).toHaveLength(4);
+      expect(ValidatorFormSchema.fields).toHaveLength(9);
       expect(ValidatorFormSchema.fields.map(f => f.name)).toEqual([
         'name',
         'description',
         'supportedAssetTypes',
-        'commissionPercentage'
+        'baseUri',
+        'defaultOperatingAgreement',
+        'serviceFee',
+        'royaltyFeePercentage',
+        'royaltyReceiver',
+        'fundManager'
       ]);
     });
 
-    it('should have correct validation rules for commissionPercentage', () => {
-      const commissionField = ValidatorFormSchema.fields.find(f => f.name === 'commissionPercentage');
-      expect(commissionField?.validation).toEqual({
+    it('should have correct validation rules for royaltyFeePercentage', () => {
+      const royaltyField = ValidatorFormSchema.fields.find(f => f.name === 'royaltyFeePercentage');
+      expect(royaltyField?.validation).toEqual({
         min: 0,
-        max: 100,
-        message: 'Commission must be between 0 and 100'
+        max: 1000,
+        message: 'Royalty fee must be between 0 and 1000'
       });
     });
 
@@ -103,11 +108,12 @@ describe('Form Schemas', () => {
    */
   describe('FundManagerFormSchema', () => {
     it('should have all required fields', () => {
-      expect(FundManagerFormSchema.fields).toHaveLength(3);
+      expect(FundManagerFormSchema.fields).toHaveLength(4);
       expect(FundManagerFormSchema.fields.map(f => f.name)).toEqual([
         'feeReceiver',
         'commissionPercentage',
-        'validatorRegistry'
+        'validatorRegistry',
+        'deedNFT'
       ]);
     });
 
@@ -123,8 +129,8 @@ describe('Form Schemas', () => {
       const commissionField = FundManagerFormSchema.fields.find(f => f.name === 'commissionPercentage');
       expect(commissionField?.validation).toEqual({
         min: 0,
-        max: 100,
-        message: 'Commission must be between 0 and 100'
+        max: 1000,
+        message: 'Commission must be between 0 and 1000'
       });
     });
 
@@ -220,6 +226,45 @@ describe('Form Schemas', () => {
         'restrictions',
         'additionalInfo'
       ]);
+    });
+  });
+
+  describe('ValidatorRegistryFormSchema', () => {
+    it('should have all required fields', () => {
+      expect(ValidatorRegistryFormSchema.fields).toHaveLength(5);
+      expect(ValidatorRegistryFormSchema.fields.map(f => f.name)).toEqual([
+        'name',
+        'description',
+        'supportedAssetTypes',
+        'fundManager',
+        'activeValidators'
+      ]);
+    });
+
+    it('should have correct field types', () => {
+      const nameField = ValidatorRegistryFormSchema.fields.find(f => f.name === 'name');
+      expect(nameField?.type).toBe('text');
+
+      const descriptionField = ValidatorRegistryFormSchema.fields.find(f => f.name === 'description');
+      expect(descriptionField?.type).toBe('textarea');
+
+      const fundManagerField = ValidatorRegistryFormSchema.fields.find(f => f.name === 'fundManager');
+      expect(fundManagerField?.type).toBe('address');
+
+      const activeValidatorsField = ValidatorRegistryFormSchema.fields.find(f => f.name === 'activeValidators');
+      expect(activeValidatorsField?.type).toBe('array');
+    });
+
+    it('should validate activeValidators as array of addresses', () => {
+      const activeValidatorsField = ValidatorRegistryFormSchema.fields.find(f => f.name === 'activeValidators');
+      expect(activeValidatorsField?.validation?.custom && activeValidatorsField.validation.custom([
+        '0x1234567890123456789012345678901234567890',
+        '0x0987654321098765432109876543210987654321'
+      ])).toBe(true);
+      expect(activeValidatorsField?.validation?.custom && activeValidatorsField.validation.custom([
+        '0xinvalid',
+        '0x1234567890123456789012345678901234567890'
+      ])).toBe(false);
     });
   });
 }); 

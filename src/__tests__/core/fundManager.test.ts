@@ -19,11 +19,17 @@ import {
   mintDeedNFT,
   mintBatchDeedNFT,
   withdrawValidatorFees,
-  getCommissionBalance,
+  getValidatorFeeBalance,
   setCommissionPercentage,
   setFeeReceiver,
   setValidatorRegistry,
-  setDeedNFT
+  setDeedNFT,
+  getCommissionPercentage,
+  commissionPercentage,
+  deedNFT,
+  formatFee,
+  collectCommission,
+  updateValidatorRoles
 } from '../../api/fundManager';
 import { AssetType } from '../../types/contracts';
 
@@ -57,7 +63,7 @@ describe('FundManager API', () => {
       'function mintDeedNFT(address to, uint8 assetType, string metadata, string definition, string configuration, address validator, address token, uint256 salt) returns (uint256)',
       'function mintBatchDeedNFT(tuple(address owner, uint8 assetType, string ipfsDetailsHash, string definition, string configuration, address validatorContract, address token, uint256 salt)[] deeds) returns (uint256[])',
       'function withdrawValidatorFees(address validator, address token)',
-      'function getCommissionBalance(address validator, address token) view returns (uint256)',
+      'function getValidatorFeeBalance(address validator, address token) view returns (uint256)',
       'function setCommissionPercentage(uint256 percentage)',
       'function setFeeReceiver(address receiver)',
       'function setValidatorRegistry(address registry)',
@@ -138,11 +144,11 @@ describe('FundManager API', () => {
     });
 
     /**
-     * @description Mocks the getCommissionBalance function to simulate balance checking
+     * @description Mocks the getValidatorFeeBalance function to simulate balance checking
      * @param args - Array of arguments containing validator and token addresses
      * @returns Mock commission balance
      */
-    jest.spyOn(fundManager, 'getCommissionBalance').mockImplementation(async (...args: any[]) => {
+    jest.spyOn(fundManager, 'getValidatorFeeBalance').mockImplementation(async (...args: any[]) => {
       const [validator, token] = args;
       const validatorBalances = commissionBalances.get(validator) || new Map<string, bigint>();
       return validatorBalances.get(token) || BigInt(0);
@@ -324,7 +330,7 @@ describe('FundManager API', () => {
       expect(fundManager.setCommissionPercentage).toHaveBeenCalledWith(percentage, expect.any(Object));
 
       // Check commission balance
-      const balance = await getCommissionBalance(fundManager, validatorAddress, token);
+      const balance = await getValidatorFeeBalance(fundManager, validatorAddress, token);
       expect(balance).toBe(BigInt(1000));
 
       // Withdraw fees
@@ -336,7 +342,7 @@ describe('FundManager API', () => {
       expect(fundManager.withdrawValidatorFees).toHaveBeenCalledWith(validatorAddress, token, expect.any(Object));
 
       // Verify balance is zeroed out
-      const newBalance = await getCommissionBalance(fundManager, validatorAddress, token);
+      const newBalance = await getValidatorFeeBalance(fundManager, validatorAddress, token);
       expect(newBalance).toBe(BigInt(0));
     });
 

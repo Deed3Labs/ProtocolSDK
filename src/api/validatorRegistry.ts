@@ -175,4 +175,62 @@ export async function removeValidator(
   const transactionManager = new TransactionManager(provider);
   const tx = await contract.removeValidator(validator);
   return await transactionManager.sendTransaction(tx);
+}
+
+/**
+ * @function registerValidator
+ * @description Registers a new validator
+ * @param {ethers.Contract} contract - The ValidatorRegistry contract instance
+ * @param {string} validator - Address of the validator contract
+ * @param {string} name - Name associated with the validator
+ * @param {string} description - Description of the validator's capabilities
+ * @param {number[]} supportedAssetTypes - Array of asset types this validator can handle
+ * @returns {Promise<TransactionResult>}
+ */
+export async function registerValidator(
+  contract: ethers.Contract,
+  validator: string,
+  name: string,
+  description: string,
+  supportedAssetTypes: number[]
+): Promise<TransactionResult> {
+  const provider = contract.runner?.provider;
+  if (!provider) {
+    throw new Error('Provider not found');
+  }
+
+  const transactionManager = new TransactionManager(provider);
+  const tx = await contract.registerValidator(validator, name, description, supportedAssetTypes);
+  return await transactionManager.sendTransaction(tx);
+}
+
+/**
+ * @function getActiveValidators
+ * @description Returns an array of all active validator addresses
+ * @param {ethers.Contract} contract - The ValidatorRegistry contract instance
+ * @returns {Promise<string[]>} Array of active validator addresses
+ */
+export async function getActiveValidators(contract: ethers.Contract): Promise<string[]> {
+  return await contract.getActiveValidators();
+}
+
+/**
+ * @function setFundManager
+ * @description Sets the FundManager contract address
+ * @param {ethers.Contract} contract - The ValidatorRegistry contract instance
+ * @param {string} fundManager - The address of the FundManager contract
+ * @returns {Promise<TransactionResult>}
+ */
+export async function setFundManager(
+  contract: ethers.Contract,
+  fundManager: string
+): Promise<TransactionResult> {
+  const provider = contract.runner?.provider;
+  if (!provider) {
+    throw new Error('Provider not found');
+  }
+
+  const transactionManager = new TransactionManager(provider);
+  const tx = await contract.setFundManager(fundManager);
+  return await transactionManager.sendTransaction(tx);
 } 

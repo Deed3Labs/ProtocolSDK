@@ -101,11 +101,16 @@ describe('Form Integration Tests', () => {
     });
 
     it('should handle complete Validator form submission flow', async () => {
-      // Set valid values
+      // Set form values
       await validatorForm.setValue('name', 'Test Validator');
       await validatorForm.setValue('description', 'Test Description');
-      await validatorForm.setValue('supportedAssetTypes', ['Land', 'Building']);
-      await validatorForm.setValue('commissionPercentage', 50);
+      await validatorForm.setValue('supportedAssetTypes', ['Land']);
+      await validatorForm.setValue('baseUri', 'https://example.com');
+      await validatorForm.setValue('defaultOperatingAgreement', 'https://example.com/agreement');
+      await validatorForm.setValue('serviceFee', '1000');
+      await validatorForm.setValue('royaltyFeePercentage', '500');
+      await validatorForm.setValue('royaltyReceiver', '0x1234567890123456789012345678901234567890');
+      await validatorForm.setValue('fundManager', '0x1234567890123456789012345678901234567890');
 
       // Validate all fields
       const isValid = await validatorForm.validateAll();
@@ -119,7 +124,7 @@ describe('Form Integration Tests', () => {
     it('should handle validation errors in Validator form', async () => {
       // Set invalid values
       await validatorForm.setValue('name', '');
-      await validatorForm.setValue('commissionPercentage', 150);
+      await validatorForm.setValue('royaltyFeePercentage', 1500);
 
       // Validate all fields
       const isValid = await validatorForm.validateAll();
@@ -127,7 +132,7 @@ describe('Form Integration Tests', () => {
 
       // Check error messages
       expect(validatorForm.getError('name')).toBe('This field is required');
-      expect(validatorForm.getError('commissionPercentage')).toBe('commissionPercentage must be between 0 and 100');
+      expect(validatorForm.getError('royaltyFeePercentage')).toBe('royaltyFeePercentage must be between 0 and 1000');
     });
   });
 
@@ -150,6 +155,7 @@ describe('Form Integration Tests', () => {
       await fundManagerForm.setValue('feeReceiver', '0x1234567890123456789012345678901234567890');
       await fundManagerForm.setValue('commissionPercentage', 25);
       await fundManagerForm.setValue('validatorRegistry', '0x9876543210987654321098765432109876543210');
+      await fundManagerForm.setValue('deedNFT', '0xabcdef9876543210abcdef9876543210abcdef98');
 
       // Validate all fields
       const isValid = await fundManagerForm.validateAll();
@@ -171,7 +177,7 @@ describe('Form Integration Tests', () => {
 
       // Check error messages
       expect(fundManagerForm.getError('feeReceiver')).toBeTruthy();
-      expect(fundManagerForm.getError('commissionPercentage')).toBe('commissionPercentage must be between 0 and 100');
+      expect(fundManagerForm.getError('commissionPercentage')).toBe('commissionPercentage must be between 0 and 1000');
     });
   });
 

@@ -146,19 +146,19 @@ export async function mintBatchDeedNFT(
 }
 
 /**
- * @function getCommissionBalance
- * @description Gets the commission balance for a validator and token
+ * @function getValidatorFeeBalance
+ * @description Gets the validator fee balance for a validator and token
  * @param {ethers.Contract} contract - The FundManager contract instance
- * @param {string} validator - Address of the validator
+ * @param {string} validatorContract - Address of the validator
  * @param {string} token - Address of the token
- * @returns {Promise<number>} The commission balance
+ * @returns {Promise<number>} The validator fee balance
  */
-export async function getCommissionBalance(
+export async function getValidatorFeeBalance(
   contract: ethers.Contract,
-  validator: string,
+  validatorContract: string,
   token: string
 ): Promise<number> {
-  return await contract.getCommissionBalance(validator, token);
+  return await contract.getValidatorFeeBalance(validatorContract, token);
 }
 
 /**
@@ -183,7 +183,7 @@ export async function withdrawValidatorFees(
  * @function setCommissionPercentage
  * @description Sets the commission percentage for the FundManager
  * @param {ethers.Contract} contract - The FundManager contract instance
- * @param {number} percentage - The new commission percentage (0-100)
+ * @param {number} percentage - The new commission percentage (0-1000)
  * @returns {Promise<TransactionResult>}
  * @throws {Error} If setting the commission percentage fails
  */
@@ -243,6 +243,20 @@ export async function setDeedNFT(
   deedNFT: string
 ): Promise<TransactionResult> {
   const tx = await contract.setDeedNFT(deedNFT);
+  const manager = new TransactionManager(contract.runner?.provider!);
+  return await manager.sendTransaction(tx);
+}
+
+/**
+ * @function updateValidatorRoles
+ * @description Updates FEE_MANAGER_ROLE assignments for all active validators
+ * @param {ethers.Contract} contract - The FundManager contract instance
+ * @returns {Promise<TransactionResult>}
+ */
+export async function updateValidatorRoles(
+  contract: ethers.Contract
+): Promise<TransactionResult> {
+  const tx = await contract.updateValidatorRoles();
   const manager = new TransactionManager(contract.runner?.provider!);
   return await manager.sendTransaction(tx);
 } 
