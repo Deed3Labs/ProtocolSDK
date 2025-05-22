@@ -215,17 +215,59 @@ The SDK is organized into several key components:
          required: true
        },
        {
-         name: 'commissionPercentage',
+         name: 'description',
+         type: 'textarea',
+         label: 'Description',
+         required: true
+       },
+       {
+         name: 'supportedAssetTypes',
+         type: 'select',
+         label: 'Supported Asset Types',
+         required: true,
+         options: ['Land', 'Building', 'Commercial']
+       },
+       {
+         name: 'baseUri',
+         type: 'text',
+         label: 'Base URI',
+         required: true
+       },
+       {
+         name: 'defaultOperatingAgreement',
+         type: 'text',
+         label: 'Default Operating Agreement',
+         required: true
+       },
+       {
+         name: 'serviceFee',
          type: 'number',
-         label: 'Commission Percentage',
+         label: 'Service Fee',
+         required: true
+       },
+       {
+         name: 'royaltyFeePercentage',
+         type: 'number',
+         label: 'Royalty Fee Percentage',
          required: true,
          validation: {
            min: 0,
-           max: 100,
-           message: 'Commission must be between 0 and 100'
+           max: 1000,
+           message: 'royaltyFeePercentage must be between 0 and 1000'
          }
        },
-       // ... other fields
+       {
+         name: 'royaltyReceiver',
+         type: 'address',
+         label: 'Royalty Receiver',
+         required: true
+       },
+       {
+         name: 'fundManager',
+         type: 'address',
+         label: 'Fund Manager',
+         required: true
+       }
      ]
    }
    ```
@@ -248,11 +290,66 @@ The SDK is organized into several key components:
          required: true,
          validation: {
            min: 0,
-           max: 100,
-           message: 'Commission must be between 0 and 100'
+           max: 1000,
+           message: 'Commission must be between 0 and 1000'
          }
        },
-       // ... other fields
+       {
+         name: 'validatorRegistry',
+         type: 'address',
+         label: 'Validator Registry',
+         required: true
+       },
+       {
+         name: 'deedNFT',
+         type: 'address',
+         label: 'DeedNFT Contract',
+         required: true
+       }
+     ]
+   }
+   ```
+
+   ##### ValidatorRegistry Form
+
+   ```typescript
+   {
+     fields: [
+       {
+         name: 'name',
+         type: 'text',
+         label: 'Registry Name',
+         required: true
+       },
+       {
+         name: 'description',
+         type: 'textarea',
+         label: 'Description',
+         required: true
+       },
+       {
+         name: 'supportedAssetTypes',
+         type: 'select',
+         label: 'Supported Asset Types',
+         required: true,
+         options: ['Land', 'Building', 'Commercial']
+       },
+       {
+         name: 'fundManager',
+         type: 'address',
+         label: 'Fund Manager',
+         required: true
+       },
+       {
+         name: 'activeValidators',
+         type: 'array',
+         label: 'Active Validators',
+         required: true,
+         validation: {
+           custom: (value: string[]) => value.every(addr => ethers.isAddress(addr)),
+           message: 'All validators must be valid Ethereum addresses'
+         }
+       }
      ]
    }
    ```
